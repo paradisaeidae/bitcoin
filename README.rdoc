@@ -1,4 +1,5 @@
-= bitcoin-bsv {<img src="https://api.travis-ci.org/lian/bitcoin-bsv.svg?branch=master" />}[http://travis-ci.org/lian/bitcoin-bsv] {<img src="http://inch-ci.org/github/lian/bitcoin-bsv.svg?branch=master" alt="Inline docs" />}[http://inch-ci.org/github/lian/bitcoin-bsv] {<img src="https://tip4commit.com/projects/108.svg" alt="tip for next commit" />}[https://tip4commit.com/github/lian/bitcoin-bsv]
+== Thanks to Lian, this is a BSV oriented fork of his repo.
+== It is in basic refactoring state for this and not yet usable.
 
 This is a ruby library for interacting with the bitcoin protocol/network.
 
@@ -21,7 +22,7 @@ Some of the main features are:
 
  gem install bitcoin-bsv
  # OR
- git clone https://github.com/lian/bitcoin-bsv.git; cd bitcoin-bsv; bundle install
+ git clone https://github.com/paradisaeidae/bitcoin-bsv.git; cd bitcoin-bsv; bundle install
 
 Note that some aspects of the library (such as networking, storage, etc.) need
 additional dependencies which are not specified in the gemspec. The core requirements are
@@ -31,7 +32,7 @@ intentionally kept to a minimum, so nobody has to install unneeded dependencies.
 * +scrypt+ to use a much faster scrypt hash implementation for Litecoin
 
 If you would like to install using Bundler, put it in your Gemfile and run bundle install
- gem 'bitcoin-bsv', git: 'https://github.com/lian/bitcoin-bsv', branch: 'master', require: 'bitcoin'
+ gem 'bitcoin-bsv', git: 'https://github.com/paradisaeidae/bitcoin-bsv', branch: 'master', require: 'bitcoin'
 
 == Library Usage
 
