@@ -20,9 +20,9 @@ Some of the main features are:
 
 == Installation
 
- gem install bitcoin-bsv
+ gem install bitcoin-sv
  # OR
- git clone https://github.com/paradisaeidae/bitcoin-bsv.git; cd bitcoin-bsv; bundle install
+ git clone https://github.com/paradisaeidae/bitcoin-sv.git; cd bitcoin-sv; bundle install
 
 Note that some aspects of the library (such as networking, storage, etc.) need
 additional dependencies which are not specified in the gemspec. The core requirements are
@@ -32,7 +32,7 @@ intentionally kept to a minimum, so nobody has to install unneeded dependencies.
 * +scrypt+ to use a much faster scrypt hash implementation for Litecoin
 
 If you would like to install using Bundler, put it in your Gemfile and run bundle install
- gem 'bitcoin-bsv', git: 'https://github.com/paradisaeidae/bitcoin-bsv', branch: 'master', require: 'bitcoin'
+ gem 'bitcoin-sv', git: 'https://github.com/paradisaeidae/bitcoin-sv', branch: 'master', require: 'bitcoin'
 
 == Library Usage
 
@@ -197,7 +197,7 @@ Any help or feedback is greatly appreciated! From getting knee-deep into ellipti
 to cleaning up high-level naming conventions, there is something for everyone to do.
 Even if you are completely lost, just pointing out what is unclear helps a lot!
 
-If you are curious or like to participate in development, drop by \#bitcoin-bsv on irc.freenode.net!
+If you are curious or like to participate in development, drop by \#bitcoin-sv on irc.freenode.net!
 
 == License
 
