@@ -27,7 +27,6 @@ autoload :ExtKey,     'bitcoin/ext_key'
 autoload :ExtPubkey,  'bitcoin/ext_key'
 autoload :Builder,    'bitcoin/builder'
 autoload :BloomFilter,'bitcoin/bloom_filter'
-autoload :Dogecoin,   'bitcoin/dogecoin'
 autoload :Litecoin,   'bitcoin/litecoin'
 autoload :ContractHash,   'bitcoin/contracthash'
 module Trezor
@@ -406,7 +405,6 @@ def self.network=(name)
  @network_options = nil # clear cached parameters
  @network = name.to_sym
  @network_project = network[:project] rescue nil
- Dogecoin.load  if dogecoin? || dogecoin_testnet?
  Namecoin.load  if namecoin? && defined?(Namecoin)
  @network end
 [:bitcoin, :bitcoin_testnet].each do |n| instance_eval "def #{n}?; network_project == :#{n}; end" end
@@ -620,7 +618,6 @@ NETWORKS[:dogecoin] = NETWORKS[:litecoin].merge({
   retarget_time_new: 60, # 1 minute
   target_spacing: 60, # block interval
   dns_seeds: [
-    "seed.dogechain.info",
     "seed.dogecoin.com", ],
   genesis_hash: "1a91e3dace36e2be3bf030a65679fe821aa1d6ef92e7c9902eb318182c355691",
   proof_of_work_limit: 0x1e0fffff,

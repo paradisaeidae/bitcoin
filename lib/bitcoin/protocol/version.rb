@@ -18,7 +18,7 @@ module Bitcoin
           from: '127.0.0.1:8333',
           to: '127.0.0.1:8333',
           nonce: Bitcoin::Protocol::Uniq,
-          user_agent: "/bitcoin-ruby:#{Bitcoin::VERSION}/",
+          user_agent: "/bitcoin-sv:#{Bitcoin::VERSION}/",
           last_block: 0, # 188617
           relay: true # BIP0037
         }.merge(opts.reject { |_k, v| v.nil? })

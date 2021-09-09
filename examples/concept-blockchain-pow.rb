@@ -4,42 +4,36 @@
 #
 # note: block data passed to do_work is simplified.
 #       bitcoin blockchain is more complex too.
-#
 
 require 'digest/sha2'
 
-
 def do_work(data, target, nonce=0)
-  found = nil
-  until found
-      d = data + [nonce].pack("I")
-      h = Digest::SHA256.hexdigest( Digest::SHA256.digest( d ) ).to_i(16)
-
-      if h <= target
-        found = [h.to_s(16).rjust(64, '0'), nonce]
-        break
-      end
-
-      nonce+=1
-  end
-  found
-end
+ found = nil
+ until found
+  d = data + [nonce].pack("I")
+  h = Digest::SHA256.hexdigest( Digest::SHA256.digest( d ) ).to_i(16)
+ 
+  if h <= target
+   found = [h.to_s(16).rjust(64, '0'), nonce]
+   break end
+ 
+  nonce+=1 end
+ found end
 
 
 def next_block(blocks, target, data)
-  block_id    = blocks.size
-  last_block  = last_hash(blocks)
-  data        = last_block + " " + data
-
-  hash, nonce = nil, nil
-
-  work_time   = t{   hash, nonce = do_work(data, target.to_i(16))         }
-  verify_time = t{   hash, nonce = do_work(data, target.to_i(16), nonce)  }
-
-  print_block( block_id, target, data, nonce, hash, work_time, verify_time )
-
-  [ hash, nonce, target, data, work_time, verify_time ]
-end
+ block_id    = blocks.size
+ last_block  = last_hash(blocks)
+ data        = last_block + " " + data
+ 
+ hash, nonce = nil, nil
+ 
+ work_time   = t{   hash, nonce = do_work(data, target.to_i(16))         }
+ verify_time = t{   hash, nonce = do_work(data, target.to_i(16), nonce)  }
+ 
+ print_block( block_id, target, data, nonce, hash, work_time, verify_time )
+ 
+ [ hash, nonce, target, data, work_time, verify_time ] end
 
 
 
@@ -61,28 +55,25 @@ def last_hash(blocks)
   if blocks.empty?
     "0000000000000000000000000000000000000000000000000000000000000000"
   else
-    blocks.last[0]
-  end
-end
+    blocks.last[0] end end
 
 def t; x = Time.now; yield; Time.now - x; end
 
 
-
 if $0 == __FILE__
-
-  target = "00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-  blocks = []
-
-
-  blocks << next_block( blocks, target, "hello ruby" )
-  blocks << next_block( blocks, target, "this is" )
-  blocks << next_block( blocks, target, "a blockchain" )
-  blocks << next_block( blocks, target, "and proof-of-work" )
-  blocks << next_block( blocks, target, "example!" )
-
-
-  puts <<-TEXT % [ blocks.size, target, blocks.inject(0){|e,i| e+=i[-2] }, blocks.inject(0){|e,i| e+=i[-1] } ]
+ 
+ target = "00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+ blocks = []
+ 
+ 
+ blocks << next_block( blocks, target, "hello ruby" )
+ blocks << next_block( blocks, target, "this is" )
+ blocks << next_block( blocks, target, "a blockchain" )
+ blocks << next_block( blocks, target, "and proof-of-work" )
+ blocks << next_block( blocks, target, "example!" )
+ 
+ 
+ puts <<-TEXT % [ blocks.size, target, blocks.inject(0){|e,i| e+=i[-2] }, blocks.inject(0){|e,i| e+=i[-1] } ]
 -------------------- blockchain time summary
        chain length: %d
          difficulty: %s
@@ -147,5 +138,3 @@ __END__
          difficulty: 00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
     total work time: 224.906909
   total verify time: 0.000292
-
-

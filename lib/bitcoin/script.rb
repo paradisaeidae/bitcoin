@@ -127,14 +127,12 @@ class Bitcoin::Script
     "OP_TRUE"  => OP_1,
     "OP_FALSE" => OP_0,
     "OP_EVAL" => OP_NOP1,
-    "OP_CHECKHASHVERIFY" => OP_NOP2,
-  }
+    "OP_CHECKHASHVERIFY" => OP_NOP2, }
 
   DISABLED_OPCODES = [
     OP_CAT, OP_SUBSTR, OP_LEFT, OP_RIGHT, OP_INVERT,
     OP_AND, OP_OR, OP_XOR, OP_2MUL, OP_2DIV, OP_MUL,
-    OP_DIV, OP_MOD, OP_LSHIFT, OP_RSHIFT
-  ]
+    OP_DIV, OP_MOD, OP_LSHIFT, OP_RSHIFT ]
 
   OP_2_16 = (82..96).to_a
 

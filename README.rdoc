@@ -184,12 +184,7 @@ or, if you want to run a single spec
 If you make changes to the code or add functionality, please also add specs.
 
 To run specs for changes that monkey patch significant functionality, you
-should run the specs individually. For example, to run the Dogecoin specs:
-
-  rake coin_spec[dogecoin]
-
-If support is added for any new coins a corresponding coin spec should also be
-added to test specific functionality of that coin.
+should run the specs individually.
 
 == Development
 
