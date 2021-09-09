@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'pry'
+require 'debug'
 require 'spec_helper'
 
 describe Bitcoin do
@@ -14,9 +14,7 @@ describe Bitcoin do
                '6bf11d5f'
 
       expect(Bitcoin.hash160(pubkey))
-        .to eq('62e907b15cbf27d5425399ebf6f0fb50ebb88f18')
-    end
-  end
+        .to eq('62e907b15cbf27d5425399ebf6f0fb50ebb88f18') end end
 
   describe '.hash160_to_address' do
     let(:pubkey_hash) { '62e907b15cbf27d5425399ebf6f0fb50ebb88f18' }
@@ -26,68 +24,51 @@ describe Bitcoin do
 
       it 'produces the expected address' do
         expect(Bitcoin.hash160_to_address(pubkey_hash))
-          .to eq('mpXwg4jMtRhuSpVq4xS3HFHmCmWp9NyGKt')
-      end
-    end
+          .to eq('mpXwg4jMtRhuSpVq4xS3HFHmCmWp9NyGKt') end end
 
     context 'mainnet' do
       before { Bitcoin.network = :bitcoin }
 
       it 'produces the expected address' do
         expect(Bitcoin.hash160_to_address(pubkey_hash))
-          .to eq('1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa')
-      end
-    end
-  end
+          .to eq('1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa') end end end
 
   describe '.pubkey_to_address' do
     let(:compressed_pubkey) do
-      '029e31ccb7308c2525d542024b8119a3ab3767933e82aedd1471f9c714d998d1b4'
-    end
+      '029e31ccb7308c2525d542024b8119a3ab3767933e82aedd1471f9c714d998d1b4' end
     let(:uncompressed_pubkey) do
       '049e31ccb7308c2525d542024b8119a3ab3767933e82aedd1471f9c714d998d1b4b823' \
-      '14814017e4e9b06a0fd8e01772bb410cb1c36cfc2d03079c315bc7494b86'
-    end
+      '14814017e4e9b06a0fd8e01772bb410cb1c36cfc2d03079c315bc7494b86' end
 
     context 'testnet' do
       before { Bitcoin.network = :testnet }
 
       it 'works for compressed pubkey' do
         expect(Bitcoin.pubkey_to_address(compressed_pubkey))
-          .to eq('mu6vSuyvpVxvDAJyZczjxaU56pXLNBSf9C')
-      end
+          .to eq('mu6vSuyvpVxvDAJyZczjxaU56pXLNBSf9C') end
 
       it 'works for uncompressed pubkey' do
         expect(Bitcoin.pubkey_to_address(uncompressed_pubkey))
-          .to eq('n4bZ82i9SdLj6YauPn3PPKFRhQHMZrdaPq')
-      end
-    end
+          .to eq('n4bZ82i9SdLj6YauPn3PPKFRhQHMZrdaPq') end end
 
     context 'mainnet' do
       before { Bitcoin.network = :bitcoin }
 
       it 'works for compressed pubkey' do
         expect(Bitcoin.pubkey_to_address(compressed_pubkey))
-          .to eq('1Eay9rtx1UXfS3qMr42N8fFkEpvdR2euvg')
-      end
+          .to eq('1Eay9rtx1UXfS3qMr42N8fFkEpvdR2euvg') end
 
       it 'works for uncompressed pubkey' do
         expect(Bitcoin.pubkey_to_address(uncompressed_pubkey))
-          .to eq('1Q5bpydAdbuUKS7HgD51ZQ36qQgeiN8cBE')
-      end
-    end
-  end
+          .to eq('1Q5bpydAdbuUKS7HgD51ZQ36qQgeiN8cBE') end end end
 
   describe '.pubkeys_to_p2sh_multisig_address' do
     let(:pubkey1) do
-      '029e31ccb7308c2525d542024b8119a3ab3767933e82aedd1471f9c714d998d1b4'
-    end
+      '029e31ccb7308c2525d542024b8119a3ab3767933e82aedd1471f9c714d998d1b4' end
     let(:pubkey2) do
-      '0299acf23a65c31fe02052d7474769529c21612b1afa56cc149747fe63867592ec'
-    end
+      '0299acf23a65c31fe02052d7474769529c21612b1afa56cc149747fe63867592ec' end
     let(:pubkey3) do
-      '020b16a7227f873ac68cf3140f1101d2eda5acb28bf3e7d546409139caf25142e4'
-    end
+      '020b16a7227f873ac68cf3140f1101d2eda5acb28bf3e7d546409139caf25142e4' end
 
     context 'testnet' do
       before { Bitcoin.network = :testnet }
@@ -103,9 +84,7 @@ describe Bitcoin do
                  '21' + pubkey1 + # pubkey1.bytesize + pubkey1
                  '21' + pubkey2 + # pubkey2.bytesize + pubkey2
                  '52' + # OP_2
-                 'ae') # OP_CHECKMULTISIG
-      end
-    end
+                 'ae') end end # OP_CHECKMULTISIG   
 
     context 'mainnet' do
       before { Bitcoin.network = :bitcoin }

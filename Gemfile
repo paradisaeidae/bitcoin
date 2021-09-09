@@ -11,5 +11,4 @@ group :test do
  gem 'minitest', '~> 5.11.3' end
 
 group :development do
- gem 'pry', '~> 0.11.3'
- gem 'pry-byebug', '~> 3.6.0' end
+ gem 'debug', '=1.0.0.beta8' end
