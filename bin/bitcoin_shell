@@ -1,6 +1,5 @@
 #!/usr/bin/env ruby
-$:.unshift( File.expand_path("../../lib", __FILE__) )
-require 'bitcoin'
+puts require_relative '../lib/bitcoin-sv'
 
 include Bitcoin
 include Bitcoin::Util
