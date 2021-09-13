@@ -405,7 +405,6 @@ def self.network=(name)
  @network_options = nil # clear cached parameters
  @network = name.to_sym
  @network_project = network[:project] rescue nil
- Namecoin.load  if namecoin? && defined?(Namecoin)
  @network end
 [:bitcoin, :bitcoin_testnet].each do |n| instance_eval "def #{n}?; network_project == :#{n}; end" end
 # maximum size of a block (in bytes)
