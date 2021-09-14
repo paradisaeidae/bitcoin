@@ -1,6 +1,6 @@
 == Thanks to Lian, this is a BSV oriented fork of his repo.
 == It is in basic refactoring state for this and not yet usable.
-== Removed references to litecoin, dogecoin, namecoin. 
+== Removed references to litecoin, dogecoin, namecoin, Bech32
 This is a ruby library for interacting with the bitcoin protocol/network.
 
 Some of the main features are:
@@ -10,11 +10,10 @@ Some of the main features are:
 * Bitcoin::Protocol can parse/create all protocol messages
 * Bitcoin::Script implementation, create/run scripts and verify signatures
 * Bitcoin::Builder provides a high-level API for creating transactions (and blocks)
-* Bitcoin::Litecoin implements all the litecoin-specific differences
 
 == Compatible with...
 
-* ruby 3.0.2
+* ruby => 3.0.0
 
 == Installation
 
@@ -30,7 +29,7 @@ intentionally kept to a minimum, so nobody has to install unneeded dependencies.
 * +scrypt+ to use a much faster scrypt hash implementation for Litecoin
 
 If you would like to install using Bundler, put it in your Gemfile and run bundle install
- gem 'bitcoin-sv', git: 'https://github.com/paradisaeidae/bitcoin-sv', branch: 'master', require: 'bitcoin'
+ gem 'bitcoin-sv', git: 'https://github.com/paradisaeidae/bitcoin-sv', branch: 'master', require: 'bitcoin-sv'
 
 == Library Usage
 
@@ -189,8 +188,6 @@ should run the specs individually.
 Any help or feedback is greatly appreciated! From getting knee-deep into elliptic-curve acrobatics,
 to cleaning up high-level naming conventions, there is something for everyone to do.
 Even if you are completely lost, just pointing out what is unclear helps a lot!
-
-If you are curious or like to participate in development, drop by \#bitcoin-sv on irc.freenode.net!
 
 == License
 
