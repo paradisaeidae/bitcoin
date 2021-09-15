@@ -293,13 +293,13 @@ def self.pack_pushdata(data)
   pack_pushdata_align(data.bitcoin_pushdata, size, data)
  else
   head = if size < OP_PUSHDATA1
-   [size].pack("C")
-  elsif size <= 0xff
-   [OP_PUSHDATA1, size].pack("CC")
-  elsif size <= 0xffff
-   [OP_PUSHDATA2, size].pack("Cv")
-   #elsif size <= 0xffffffff
-   else [OP_PUSHDATA4, size].pack("CV") end
+  [size].pack("C")
+ elsif size <= 0xff
+  [OP_PUSHDATA1, size].pack("CC")
+ elsif size <= 0xffff
+  [OP_PUSHDATA2, size].pack("Cv")
+  #elsif size <= 0xffffffff
+  else [OP_PUSHDATA4, size].pack("CV") end
   head + data end end
 
 def self.pack_pushdata_align(pushdata, len, data)

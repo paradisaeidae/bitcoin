@@ -1,5 +1,3 @@
-# encoding: ascii-8bit
-
 # ruby version of: https://github.com/spesmilo/electrum/blob/master/lib/mnemonic.py
 class Mnemonic
   # list of words from http://en.wiktionary.org/wiki/Wiktionary:Frequency_lists/Contemporary_poetry
@@ -115,51 +113,47 @@ class Mnemonic
     thigh throne total unseen weapon weary
   TEXT
 
-  def self.encode(hex, words = WORDS)
-    n = words.size
-    [hex].pack('H*').unpack('N*').map do |x|
-      w1 = x % n
-      w2 = ((x / n) + w1) % n
-      w3 = ((x / n / n) + w2) % n
-      [words[w1], words[w2], words[w3]]
-    end.flatten
-  end
+def self.encode(hex, words = WORDS)
+ n = words.size
+ [hex].pack('H*').unpack('N*').map do |x|
+  w1 = x % n
+  w2 = ((x / n) + w1) % n
+  w3 = ((x / n / n) + w2) % n
+  [words[w1], words[w2], words[w3]]
+ end.flatten end
 
-  def self.decode(word_list, words = WORDS)
-    n = words.size
-    word_list.each_slice(3).map do |three_words|
-      w1, w2, w3 = three_words.map { |word| words.index(word) % n }
-      format('%08x', (w1 + n * ((w2 - w1) % n) + n * n * ((w3 - w2) % n)))
-    end.join
-  end
-end
+def self.decode(word_list, words = WORDS)
+ n = words.size
+ word_list.each_slice(3).map do |three_words|
+  w1, w2, w3 = three_words.map { |word| words.index(word) % n }
+  format('%08x', (w1 + n * ((w2 - w1) % n) + n * n * ((w3 - w2) % n)))
+ end.join end end
 
 if $PROGRAM_NAME == __FILE__
-  hex = '4c7d10656aa55383a5d88e3f63300af5e169918f4058bf349d99b20239909b61'
-  expected_words = %w[horse love nose speak diamond gaze wash drag glance
-                      money cease soft complete huge aside confusion touch
-                      grass pie play bread exactly bubble great]
-
-  p Mnemonic.encode(hex) == expected_words
-  p Mnemonic.decode(expected_words) == hex
-
-  # from http://brainwallet.org/#chains
-  hex = 'ff64b72c431f75799f0c5ebe438e46dd'
-  expected_words = %w[muscle lot sea got revenge crack wait yeah gas study embrace spend]
-  p Mnemonic.encode(hex) == expected_words
-  p Mnemonic.decode(expected_words) == hex
-
-  hex = '18cfaf96961750c7a4e4e39c861d1415'
-  expected_words = %w[example poor twice expect decision master blame rub forward easy jump carve]
-  p Mnemonic.encode(hex) == expected_words
-  p Mnemonic.decode(expected_words) == hex
-
-  # from  https://en.bitcoin.it/wiki/Electrum#Brain_Wallet
-  hex = '431a62f1c86555d3c45e5c4d9e10c8c7'
-  expected_words = %w[constant forest adore false green weave stop guy fur freeze giggle clock]
-
-  # p Mnemonic.encode(hex)
-  p Mnemonic.encode(hex) == expected_words
-  # p Mnemonic.decode(expected_words)
-  p Mnemonic.decode(expected_words) == hex
-end
+ hex = '4c7d10656aa55383a5d88e3f63300af5e169918f4058bf349d99b20239909b61'
+ expected_words = %w[horse love nose speak diamond gaze wash drag glance
+                     money cease soft complete huge aside confusion touch
+                     grass pie play bread exactly bubble great]
+ 
+ p Mnemonic.encode(hex) == expected_words
+ p Mnemonic.decode(expected_words) == hex
+ 
+ # from http://brainwallet.org/#chains
+ hex = 'ff64b72c431f75799f0c5ebe438e46dd'
+ expected_words = %w[muscle lot sea got revenge crack wait yeah gas study embrace spend]
+ p Mnemonic.encode(hex) == expected_words
+ p Mnemonic.decode(expected_words) == hex
+ 
+ hex = '18cfaf96961750c7a4e4e39c861d1415'
+ expected_words = %w[example poor twice expect decision master blame rub forward easy jump carve]
+ p Mnemonic.encode(hex) == expected_words
+ p Mnemonic.decode(expected_words) == hex
+ 
+ # from  https://en.bitcoin.it/wiki/Electrum#Brain_Wallet
+ hex = '431a62f1c86555d3c45e5c4d9e10c8c7'
+ expected_words = %w[constant forest adore false green weave stop guy fur freeze giggle clock]
+ 
+ # p Mnemonic.encode(hex)
+ p Mnemonic.encode(hex) == expected_words
+ # p Mnemonic.decode(expected_words)
+ p Mnemonic.decode(expected_words) == hex end
