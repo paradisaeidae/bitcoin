@@ -2,6 +2,8 @@
 == It is in basic refactoring state for this and not yet usable.
 == Removed references to litecoin, dogecoin, namecoin, Bech32
 This is a ruby library for interacting with the bitcoin protocol/network.
+As per the adjustments to return to:
+https://github.com/bitcoin-sv-specs/protocol/blob/master/updates/genesis-spec.md
 
 Some of the main features are:
 
