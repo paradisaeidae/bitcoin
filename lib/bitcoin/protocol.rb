@@ -129,9 +129,9 @@ def self.inv_pkt(type, hashes)
 DEFAULT_STOP_HASH = "00"*32
 def self.locator_payload(version, locator_hashes, stop_hash)
  [ [version].pack("V"),
-  pack_var_int(locator_hashes.size),
-  locator_hashes.map{|l| l.htb_reverse }.join,
-  stop_hash.htb_reverse ].join end
+ pack_var_int(locator_hashes.size),
+ locator_hashes.map{|l| l.htb_reverse }.join,
+ stop_hash.htb_reverse ].join end
 def self.getblocks_pkt(version, locator_hashes, stop_hash=DEFAULT_STOP_HASH)
  pkt "getblocks",  locator_payload(version, locator_hashes, stop_hash) end
 
