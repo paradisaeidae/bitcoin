@@ -7,18 +7,18 @@ module Protocol
 MAX_INV_SZ = 50000
 # BIP 0031, pong message, is enabled for all versions AFTER this one
 BIP0031_VERSION = 60000
-autoload :ScriptWitness, 'bitcoin/protocol/script_witness'
-autoload :TxIn,          'bitcoin/protocol/txin'
-autoload :TxOut,         'bitcoin/protocol/txout'
-autoload :Tx,            'bitcoin/protocol/tx'
-autoload :Block,         'bitcoin/protocol/block'
-autoload :Addr,          'bitcoin/protocol/address'
-autoload :Reject,        'bitcoin/protocol/reject'
-autoload :Version,       'bitcoin/protocol/version'
-autoload :AuxPow,        'bitcoin/protocol/aux_pow'
-autoload :PartialMerkleTree,  'bitcoin/protocol/partial_merkle_tree'
-autoload :Handler,       'bitcoin/protocol/handler'
-autoload :Parser,        'bitcoin/protocol/parser'
+#autoload :ScriptWitness, 'bitcoin/protocol/script_witness' DEPRECATED
+autoload :TxIn,              'bitcoin/protocol/txin'
+autoload :TxOut,             'bitcoin/protocol/txout'
+autoload :Tx,                'bitcoin/protocol/tx'
+autoload :Block,             'bitcoin/protocol/block'
+autoload :Addr,              'bitcoin/protocol/address'
+autoload :Reject,            'bitcoin/protocol/reject'
+autoload :Version,           'bitcoin/protocol/version'
+autoload :AuxPow,            'bitcoin/protocol/aux_pow'
+autoload :PartialMerkleTree, 'bitcoin/protocol/partial_merkle_tree'
+autoload :Handler,           'bitcoin/protocol/handler'
+autoload :Parser,            'bitcoin/protocol/parser'
 Uniq = rand(0xffffffffffffffff)
 # var_int refers to https://en.bitcoin.it/wiki/Protocol_specification#Variable_length_integer and is what
 # Satoshi called "CompactSize"
@@ -98,7 +98,7 @@ def self.pkt(command, payload)
 
 def self.version_pkt(from_id, from=nil, to=nil, last_block=nil, time=nil, user_agent=nil, version=nil)
  opts = if from_id.is_a?(Hash)
-  from_id
+ from_id
  else
   STDERR.puts "Bitcoin::Protocol.version_pkt - API deprecated. please change it soon.."
   { :nonce => from_id, :from => from, :to => to, :last_block => last_block,

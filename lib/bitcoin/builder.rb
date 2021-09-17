@@ -185,7 +185,7 @@ def sig_hash_and_all_keys_exist?(inc, sig_script)
  script = Bitcoin::Script.new(sig_script)
  return true if script.is_hash160? ||
                 script.is_pubkey? ||
-                script.is_witness_v0_keyhash? ||
+ #DEPR          script.is_witness_v0_keyhash? ||
                 (Bitcoin.namecoin? && script.is_namecoin?)
  if script.is_multisig?
    return inc.multiple_keys? && inc.key.size >= script.get_signatures_required
@@ -232,9 +232,11 @@ def sign_input(i, inc)
  # when a sig_script was found, generate the sig_hash to be signed
  if sig_script
   script = Script.new(sig_script)
-  @sig_hash = if script.is_witness_v0_keyhash?
-    @tx.signature_hash_for_witness_input(i, sig_script, inc.value)
-   elsif inc.prev_out_forkid
+  @sig_hash = \
+ #DEPR if script.is_witness_v0_keyhash?
+ #DEPR  @tx.signature_hash_for_witness_input(i, sig_script, inc.value)
+ #DEPR  els
+  if inc.prev_out_forkid
     @tx.signature_hash_for_input(
     i,
     sig_script,
@@ -245,15 +247,15 @@ def sign_input(i, inc)
  # when there is a sig_hash and one or more signature_keys were specified
  if sig_hash_and_all_keys_exist?(inc, sig_script)
   # add the script_sig to the txin
-  if script.is_witness_v0_keyhash? # for p2wpkh
-   @tx.in[i].script_witness.stack << inc.sign(@sig_hash) + \
-       [Script::SIGHASH_TYPE[:all]].pack('C')
-   @tx.in[i].script_witness.stack << inc.key.pub.htb
-   redeem_script = inc.instance_eval { @redeem_script }
-   @tx.in[i].script_sig = Bitcoin::Script.pack_pushdata(redeem_script) if redeem_script
-  else @tx.in[i].script_sig = get_script_sig(inc, hash_type) end
+  #DEPR if script.is_witness_v0_keyhash? # for p2wpkh
+  #DEPR  @tx.in[i].script_witness.stack << inc.sign(@sig_hash) + [Script::SIGHASH_TYPE[:all]].pack('C')
+  #DEPR  @tx.in[i].script_witness.stack << inc.key.pub.htb
+  #DEPR  redeem_script = inc.instance_eval { @redeem_script }
+  #DEPR  @tx.in[i].script_sig = Bitcoin::Script.pack_pushdata(redeem_script) if redeem_script
+    #DEPR else @tx.in[i].script_sig = get_script_sig(inc, hash_type) end
+  @tx.in[i].script_sig = get_script_sig(inc, hash_type)
   # double-check that the script_sig is valid to spend the given prev_script
-  if @prev_script && !inc.prev_out_forkid
+  if @prev_script && !inc.prev_out_forkid ???
    verified = if script.is_witness_v0_keyhash?
     @tx.verify_witness_input_signature(i, @prev_script, inc.value)
    else
@@ -375,10 +377,10 @@ def has_keys? # rubocop:disable Naming/PredicateName
 def witness_v0_keyhash? # DEPRECATE
  @prev_out_script && Script.new(@prev_out_script).is_witness_v0_keyhash? end
 
-def is_witness_v0_keyhash? # rubocop:disable Naming/PredicateName  DEPRECATE
- warn '[DEPRECATION] `TxInBuilder.is_witness_v0_keyhash?` is deprecated. ' \
-  'Use `witness_v0_keyhash?` instead.'
- witness_v0_keyhash? end
+#DEPR def is_witness_v0_keyhash? # rubocop:disable Naming/PredicateName  DEPRECATE
+#DEPR  warn '[DEPRECATION] `TxInBuilder.is_witness_v0_keyhash?` is deprecated. ' \
+#DEPR   'Use `witness_v0_keyhash?` instead.'
+#DEPR  witness_v0_keyhash? end
 
 def sign(sig_hash)
  if multiple_keys?
