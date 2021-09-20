@@ -28,7 +28,7 @@ def to_payload
  [time, service, ("\x00" * 10) + "\xff\xff", *ip, port].pack('VQa12C4n') end
 
 def string
-  "#{self[:ip]}:#{self[:port]}" end
+ "#{self[:ip]}:#{self[:port]}" end
 
 def self.pkt(*addrs)
  addrs = addrs.select do |i| i.is_a?(Bitcoin::Protocol::Addr) && i.ip =~ /^\d+\.\d+\.\d+\.\d+$/ end
