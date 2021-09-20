@@ -197,10 +197,11 @@ def get_script_sig(inc, hash_type)
  if inc.multiple_keys?  # multiple keys given, generate signature for each one
   sigs = inc.sign(@sig_hash)
   redeem_script = inc.instance_eval { @redeem_script }
-  if redeem_script     # when a redeem_script was specified, assume we spend a p2sh multisig script
-   script_sig = Script.to_p2sh_multisig_script_sig(redeem_script, sigs)
-  else                 # when no redeem_script is given, do a regular multisig spend
-   script_sig = Script.to_multisig_script_sig(*sigs) end
+  if redeem_script then script_sig = Script.to_multisig_script_sig(*sigs) end
+  # DEPR when a redeem_script was specified, assume we spend a p2sh multisig script
+  # DEPR script_sig = Script.to_p2sh_multisig_script_sig(redeem_script, sigs)
+  # DEPR else                 
+  # when no redeem_script is given, do a regular multisig spend
  else
   # only one key given, generate signature and script_sig
   sig = inc.sign(@sig_hash)
@@ -211,8 +212,7 @@ def get_script_sig(inc, hash_type)
 def sign_input(i, inc)
  return include_coinbase_data(i, inc) if @tx.in[i].coinbase?
  @prev_script = inc.instance_variable_get(:@prev_out_script)
- # get the signature script; use +redeem_script+ if given
- # (indicates spending a p2sh output), otherwise use the prev_script
+ # get the signature script; use +redeem_script+ if given, otherwise use the prev_script
  sig_script = inc.instance_eval { @redeem_script }
  sig_script ||= @prev_script
  hash_type = if inc.prev_out_forkid
@@ -268,10 +268,9 @@ def randomize_outputs
 #
 #  t.input {|i| i.prev_out prev_tx, 0 }
 #
-# If you want to spend a p2sh output, you also need to specify the +redeem_script+.
+# DEPR If you want to spend a p2sh output, you also need to specify the +redeem_script+.
 #
-#  t.input do |i|
-#   i.prev_out prev_tx, 0
+#  t.input do |i|  i.prev_out prev_tx, 0
 #   i.redeem_script prev_out.redeem_script end
 #
 # If you want to spend a multisig output, just provide an array of keys to #signature_key.
@@ -318,7 +317,7 @@ def value
 
 # Redeem script for P2SH output. To spend from a P2SH output, you need to provide
 # the script with a hash matching the P2SH address.
-def redeem_script(script) # rubocop:disable Style/TrivialAccessors
+def redeem_script(script)
  @redeem_script = script end
 
 # Specify sequence. This is usually not needed.

@@ -1,6 +1,5 @@
 module Bitcoin
-module Protocol
-# https://en.bitcoin.it/wiki/Protocol_documentation#Merkle_Trees
+module Protocol # https://en.bitcoin.it/wiki/Protocol_documentation#Merkle_Trees
 class PartialMerkleTree
 Node = Struct.new(:value, :left, :right, :width_idx)
 BIT_MASK = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80].freeze

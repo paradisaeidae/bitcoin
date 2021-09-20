@@ -25,7 +25,6 @@ autoload :Mnemonic,   'bitcoin/trezor/mnemonic' end
 module Util
 def address_version;   Bitcoin.network[:address_version]; end
 def version_bytes;     address_version.size / 2; end
-def p2sh_version;      Bitcoin.network[:p2sh_version]; end
 
 # hash160 is a 20 bytes (160bits) rmd610-sha256 hexdigest.
 def hash160(hex)
@@ -65,7 +64,7 @@ rescue OpenSSL::BNError
 # https://learnmeabitcoin.com/technical/public-key-hash
 def hash160_from_address(address)
  case address_type(address)
- when :hash160, :p2sh
+ when :hash160
   start_idx = version_bytes * 2
   stop_idx = start_idx + 40 # 20 bytes (2 chars per byte)
   decode_base58(address)[start_idx...stop_idx] end end
@@ -75,26 +74,20 @@ def address_type(address)
  hex = decode_base58(address) rescue nil
  target_size = (version_bytes + 20 + 4) * 2 # version_bytes + 20 bytes hash + 4 bytes checksum
  if hex && hex.bytesize == target_size && address_checksum?(address)
-  # Litecoin updates the P2SH version byte, and this method should recognize both.
-  p2sh_versions = [p2sh_version]
-  if Bitcoin.network[:legacy_p2sh_versions] then p2sh_versions += Bitcoin.network[:legacy_p2sh_versions] end
   case hex[0...(version_bytes * 2)]
   when address_version
-  return :hash160
-  when *p2sh_versions
-   return :p2sh end end
+  return :hash160 end end
  nil end
 
 def sha256(hex);                     Digest::SHA256.hexdigest([hex].pack("H*")) end
 def hash160_to_address(hex);         encode_address hex, address_version end
-def hash160_to_p2sh_address(hex);    encode_address hex, p2sh_version end
 def encode_address(hex, version);
  hex = version + hex
  encode_base58(hex + checksum(hex)) end
 def pubkey_to_address(pubkey);       hash160_to_address( hash160(pubkey) ) end
-def pubkeys_to_p2sh_multisig_address(m, *pubkeys)
- redeem_script = Bitcoin::Script.to_p2sh_multisig_script(m, *pubkeys).last
- return Bitcoin.hash160_to_p2sh_address(Bitcoin.hash160(redeem_script.hth)), redeem_script end
+def pubkeys_to_multisig_address(m, *pubkeys)
+ redeem_script = Bitcoin::Script.to_multisig_script(m, *pubkeys).last
+ return Bitcoin.hash160_to_address(Bitcoin.hash160(redeem_script.hth)), redeem_script end
 
 def int_to_base58(int_val, leading_zero_bytes=0)
  alpha = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
@@ -423,7 +416,6 @@ NETWORKS = {
   magic_head: "\xF9\xBE\xB4\xD9",
   message_magic: "Bitcoin Signed Message:\n",
   address_version: "00",
-  p2sh_version: "05",
   privkey_version: "80",
   extended_privkey_version: "0488ade4",
   extended_pubkey_version: "0488b21e",
@@ -451,7 +443,6 @@ NETWORKS = {
 NETWORKS[:testnet] = NETWORKS[:bitcoin].merge({
  magic_head: "\xFA\xBF\xB5\xDA",
  address_version: "6f",
- p2sh_version: "c4",
  privkey_version: "ef",
  extended_privkey_version: "04358394",
  extended_pubkey_version: "043587cf",

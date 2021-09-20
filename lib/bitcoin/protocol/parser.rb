@@ -1,6 +1,5 @@
 module Bitcoin
-module Protocol
-# https://en.bitcoin.it/wiki/Protocol_documentation#Message_types
+module Protocol # https://en.bitcoin.it/wiki/Protocol_documentation#Message_types
 class Parser
 attr_reader :stats
 def initialize(handler = nil)

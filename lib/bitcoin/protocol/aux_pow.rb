@@ -1,5 +1,3 @@
-# encoding: ascii-8bit
-
 module Bitcoin
 module Protocol
 # Auxiliary Proof-of-Work for merge-mined blockchains

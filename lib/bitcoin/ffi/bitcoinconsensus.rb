@@ -6,7 +6,6 @@ module Bitcoin
 module BitcoinConsensus
 extend FFI::Library
 SCRIPT_VERIFY_NONE      = 0
-SCRIPT_VERIFY_P2SH      = (1 << 0)
 SCRIPT_VERIFY_STRICTENC = (1 << 1)
 SCRIPT_VERIFY_DERSIG    = (1 << 2)
 SCRIPT_VERIFY_LOW_S     = (1 << 3)

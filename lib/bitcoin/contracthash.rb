@@ -24,8 +24,8 @@ def self.generate(redeem_script_hex, payee_address_or_ascii, nonce_hex = nil)
   key.instance_eval { @pubkey_compressed = true }
   derived_keys << key.pub end
  m = redeem_script.get_signatures_required
- p2sh_script, redeem_script = Bitcoin::Script.to_p2sh_multisig_script(m, *derived_keys)
- [nonce_hex, redeem_script.unpack('H*')[0], Bitcoin::Script.new(p2sh_script).get_p2sh_address] end
+ script, redeem_script = Bitcoin::Script.to_multisig_script(m, *derived_keys)
+ [nonce_hex, redeem_script.unpack('H*')[0], Bitcoin::Script.new(script).get_address] end
 
 # claim a contract
 def self.claim(private_key_wif, payee_address_or_ascii, nonce_hex)
@@ -43,7 +43,6 @@ def self.compute_data(address_or_ascii, nonce_hex)
  if Bitcoin.valid_address?(address_or_ascii)
   address_type = case Bitcoin.address_type(address_or_ascii)
    when :hash160 then  'P2PH'
-   when :p2sh then     'P2SH'
    else raise "unsupported address type #{address_type}" end
   contract_bytes = [Bitcoin.hash160_from_address(address_or_ascii)].pack('H*')
  else

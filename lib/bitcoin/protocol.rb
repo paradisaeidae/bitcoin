@@ -2,8 +2,7 @@ require 'socket'
 require 'digest/sha2'
 require 'json'
 module Bitcoin
-module Protocol
-# bitcoin/src/main.h
+module Protocol # bitcoin/src/main.h
 MAX_INV_SZ = 50000
 # BIP 0031, pong message, is enabled for all versions AFTER this one
 BIP0031_VERSION = 60000

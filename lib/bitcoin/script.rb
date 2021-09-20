@@ -147,7 +147,6 @@ def initialize(input_script, previous_output_script=nil)
  @raw_byte_sizes = [input_script.bytesize, previous_output_script ? previous_output_script.bytesize : 0]
  @input_script, @previous_output_script = input_script, previous_output_script
  @parse_invalid = nil
- @inner_p2sh = nil
  @script_codeseparator_index = nil
  @raw = if @previous_output_script
   @input_script + [ Bitcoin::Script::OP_CODESEPARATOR ].pack("C") + @previous_output_script
@@ -354,9 +353,7 @@ def run(block_timestamp=Time.now.to_i, opts={}, &check_callback)
  return false if @parse_invalid
  #p [to_string, block_timestamp, is_p2sh?]
  @script_invalid = true if @raw_byte_sizes.any?{|size| size > 10_000 }
- @last_codeseparator_index = 0
- if block_timestamp >= 1333238400 # Pay to Script Hash (BIP 0016)
-  return pay_to_script_hash(block_timestamp, opts, check_callback)  if is_p2sh? end
+ @last_codeseparator_index = 0 # 1333238400
  @debug = []
  @chunks.each.with_index{|chunk,idx|
   break if invalid?
@@ -427,37 +424,8 @@ def pay_to_script_hash(block_timestamp, opts, check_callback)
  @stack = script.stack # Set the execution stack to match the redeem script, so checks on stack contents at end of script execution validate correctly
  result end
 
-def inner_p2sh!(script=nil); @inner_p2sh = true; @inner_script_code = script; self; end
-def inner_p2sh?; @inner_p2sh; end
-
-def inner_p2sh_script # get the inner p2sh script
- return nil if @chunks.size < 4
- *rest, script, _, script_hash, _ = @chunks
- script = rest.pop if script == OP_CODESEPARATOR
- script, script_hash = cast_to_string(script), cast_to_string(script_hash)
- return nil unless Bitcoin.hash160(script.unpack("H*")[0]) == script_hash.unpack("H*")[0]
- script end
-
-def is_pay_to_script_hash? # is this a :script_hash (pay-to-script-hash/p2sh) script?
- @inner_p2sh ||= false
- return false if @inner_p2sh
- if @previous_output_script
-  chunks = Bitcoin::Script.new(@previous_output_script).chunks
-  chunks.size == 3 &&
-  chunks[-3] == OP_HASH160 &&
-  chunks[-2].is_a?(String) && chunks[-2].bytesize == 20 &&
-  chunks[-1] == OP_EQUAL
- else
-  @chunks.size >= 3 &&
-  @chunks[-3] == OP_HASH160 &&
-  @chunks[-2].is_a?(String) && @chunks[-2].bytesize == 20 &&
-  @chunks[-1] == OP_EQUAL &&
-  # make sure the script_sig matches the p2sh hash from the pk_script (if there is one)
-  (@chunks.size > 3 ? pay_to_script_hash(nil, nil, :check) : true) end end
-alias :is_p2sh? :is_pay_to_script_hash?
-
 def is_standard? # check if script is in one of the recognized standard formats
- is_pubkey? || is_hash160? || is_multisig? || is_p2sh?  || is_op_return? || is_witness_v0_keyhash? || is_witness_v0_scripthash? end
+ is_pubkey? || is_hash160? || is_multisig? || is_op_return? || is_witness_v0_keyhash? || is_witness_v0_scripthash? end
 
 def is_pubkey? # is this a pubkey script
  return false if @chunks.size != 2
@@ -531,7 +499,6 @@ def type
  if is_hash160?;                 :hash160
  elsif is_pubkey?;               :pubkey
  elsif is_multisig?;             :multisig
- elsif is_p2sh?;                 :p2sh
  elsif is_op_return?;            :op_return
  elsif is_witness_v0_keyhash?;   :witness_v0_keyhash
  elsif is_witness_v0_scripthash?;:witness_v0_scripthash
@@ -549,7 +516,6 @@ def get_pubkey_address
 # get the hash160 for this hash160 or pubkey script
 def get_hash160
  return @chunks[2..-3][0].unpack("H*")[0]  if is_hash160?
- return @chunks[-2].unpack("H*")[0]        if is_p2sh?
  return Bitcoin.hash160(get_pubkey)        if is_pubkey?
  return @chunks[1].unpack("H*")[0]         if is_witness_v0_keyhash?
  return @chunks[1].unpack("H*")[0]         if is_witness_v0_scripthash? end
@@ -571,9 +537,6 @@ def get_multisig_addresses
   end
  } end
 
-def get_p2sh_address
- Bitcoin.hash160_to_p2sh_address(get_hash160) end
-
 # get the data possibly included in an OP_RETURN script
 def get_op_return_data
  return nil  unless is_op_return?
@@ -584,10 +547,6 @@ def get_addresses
  return [get_pubkey_address]    if is_pubkey?
  return [get_hash160_address]   if is_hash160?
  return get_multisig_addresses  if is_multisig?
- return [get_p2sh_address]      if is_p2sh?
- if is_witness_v0_keyhash? || is_witness_v0_scripthash?
-  program_hex = chunks[1].unpack("H*").first
-  return [Bitcoin.encode_segwit_address(0, program_hex)] end
  [] end
 
 # get single address, or first for multisig script
@@ -607,44 +566,18 @@ def self.to_hash160_script(hash160)
  #  DUP   HASH160  length  hash160    EQUALVERIFY  CHECKSIG
  [ ["76", "a9",    "14",   hash160,   "88",        "ac"].join ].pack("H*") end
 
-# generate p2sh output script for given +p2sh+ hash160. returns a raw binary script of the form:
-#  OP_HASH160 <p2sh> OP_EQUAL
-def self.to_p2sh_script(p2sh)
- return nil  unless p2sh
- # HASH160  length  hash  EQUAL
- [ ["a9",   "14",   p2sh, "87"].join ].pack("H*") end
-
-# generate pay-to-witness output script for given +witness_version+ and
-# +witness_program+. returns a raw binary script of the form:
-# <witness_version> <witness_program> 
-def self.to_witness_script(witness_version, witness_program_hex)  # DEPRECATE
- return nil unless (0..16).include?(witness_version)
- return nil unless witness_program_hex
- version = witness_version != 0 ? 0x50 + witness_version : 0 # 0x50 for OP_1.. codes
- [version].pack('C') + pack_pushdata(witness_program_hex.htb) end
-
 # generate p2wpkh tx for given +address+. returns a raw binary script of the form:
 # 0 <hash160>
 def self.to_witness_hash160_script(hash160) # DEPRECATE
  return nil  unless hash160
  to_witness_script(0, hash160) end
 
-# generate p2wsh output script for given +p2sh+ sha256. returns a raw binary script of the form:
-# 0 <p2sh>
-def self.to_witness_p2sh_script(p2sh)
- return nil  unless p2sh
- to_witness_script(0, p2sh) end
-
-# generate hash160 or p2sh output script, depending on the type of the given +address+.
-# see #to_hash160_script and #to_p2sh_script.
+# generate hash160 depending on the type of the given +address+.
+# see #to_hash160_script
 def self.to_address_script(address)
  hash160 = Bitcoin.hash160_from_address(address)
  case Bitcoin.address_type(address)
- when :hash160; to_hash160_script(hash160)
- when :p2sh;    to_p2sh_script(hash160)
- when :witness_v0_keyhash, :witness_v0_scripthash # DEPRECATE
-  witness_version, witness_program_hex = Bitcoin.decode_segwit_address(address)
-  to_witness_script(witness_version, witness_program_hex) end end
+ when :hash160; to_hash160_script(hash160) end end
 
 # generate multisig output script for given +pubkeys+, expecting +m+ signatures.
 # returns a raw binary script of the form:
@@ -676,14 +609,6 @@ def self.to_pubkey_script_sig(signature, pubkey, hash_type = SIGHASH_TYPE[:all])
  raise "pubkey is not in binary form" if !expected_size || pubkey.bytesize != expected_size
  return buf + pack_pushdata(pubkey) end
 
-# generate p2sh multisig output script for given +args+.
-# returns the p2sh output script, and the redeem script needed to spend it.
-# see #to_multisig_script for the redeem script, and #to_p2sh_script for the p2sh script.
-def self.to_p2sh_multisig_script(*args)
- redeem_script = to_multisig_script(*args)
- p2sh_script = to_p2sh_script(Bitcoin.hash160(redeem_script.hth))
- return p2sh_script, redeem_script end
-
 # alias for #to_pubkey_script_sig
 def self.to_signature_pubkey_script(*a)
  to_pubkey_script_sig(*a) end
@@ -697,7 +622,7 @@ def self.to_multisig_script_sig(*sigs)
  sigs.reverse_each{ |sig| partial_script = add_sig_to_multisig_script_sig(sig, partial_script, hash_type) }
  partial_script end
 
-# take a multisig script sig (or p2sh multisig script sig) and add
+# take a multisig script sig and add
 # another signature to it after the OP_0. Used to sign a tx by
 # multiple parties. Signatures must be in the same order as the
 # pubkeys in the output script being redeemed.
@@ -706,15 +631,15 @@ def self.add_sig_to_multisig_script_sig(sig, script_sig, hash_type = SIGHASH_TYP
  offset = script_sig.empty? ? 0 : 1
  script_sig.insert(offset, pack_pushdata(signature)) end
 
-# generate input script sig spending a p2sh-multisig output script.
+# generate input script sig spending a multisig output script.
 # returns a raw binary script sig of the form:
 #  OP_0 <sig> [<sig> ...] <redeem_script>
-def self.to_p2sh_multisig_script_sig(redeem_script, *sigs)
+def self.to_multisig_script_sig(redeem_script, *sigs)
  to_multisig_script_sig(*sigs.flatten) + pack_pushdata(redeem_script) end
 
 # Sort signatures in the given +script_sig+ according to the order of pubkeys in
 # the redeem script. Also needs the +sig_hash+ to match signatures to pubkeys.
-def self.sort_p2sh_multisig_signatures script_sig, sig_hash
+def self.sort_multisig_signatures script_sig, sig_hash
  script = new(script_sig)
  redeem_script = new(script.chunks[-1])
  pubkeys = redeem_script.get_multisig_pubkeys
@@ -769,12 +694,12 @@ def sigops_count_for_p2sh
  return 0 if @chunks.size == 0
  data = nil
  @chunks.each do |chunk|
-   case chunk
-   when Bitcoin::Integer
-     data = ""
-     return 0 if chunk > OP_16
-   when String
-     data = chunk end end
+  case chunk
+  when Bitcoin::Integer
+   data = ""
+   return 0 if chunk > OP_16
+  when String
+   data = chunk end end
  return 0 if data == ""
  ::Bitcoin::Script.new(data).sigops_count_accurate(true) end
 
@@ -1122,9 +1047,9 @@ def op_checksig(check_callback, opts={})
 def sighash_subscript(drop_sigs, opts = {})
  if opts[:fork_id]
   drop_sigs.reject! do |signature|
-    if signature && signature.size > 0
-      _, hash_type = parse_sig(signature)
-      (hash_type&SIGHASH_TYPE[:forkid]) != 0 end end end
+   if signature && signature.size > 0
+     _, hash_type = parse_sig(signature)
+     (hash_type&SIGHASH_TYPE[:forkid]) != 0 end end end
  if inner_p2sh? && @inner_script_code
   ::Bitcoin::Script.new(@inner_script_code).to_binary_without_signatures(drop_sigs)
  else to_binary_without_signatures(drop_sigs) end end
