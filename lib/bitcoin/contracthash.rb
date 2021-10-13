@@ -37,6 +37,7 @@ def self.claim(private_key_wif, payee_address_or_ascii, nonce_hex)
  derived_key = (tweak + key.priv.to_i(16)) % EC_GROUP.order.to_i
  raise 'zero' if derived_key.zero?
  Bitcoin::Key.new(derived_key.to_s(16)) end
+
 # compute HMAC data
 def self.compute_data(address_or_ascii, nonce_hex)
  nonce = nonce_hex ? [nonce_hex].pack('H32') : SecureRandom.random_bytes(16)
