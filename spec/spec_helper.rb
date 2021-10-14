@@ -1,9 +1,7 @@
 # frozen_string_literal: true
 require_relative '../lib/bitcoin'
-# Used for loading some fixtures
-require 'json'
-# Code coverage generation
-require 'simplecov'
+require 'json' # Used for loading some fixtures
+require 'simplecov' # Code coverage generation
 
 SimpleCov.start do
  add_group('Bitcoin') do |file|

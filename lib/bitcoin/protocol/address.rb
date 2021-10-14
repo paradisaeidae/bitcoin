@@ -1,4 +1,3 @@
-# encoding: ascii-8bit
 module Bitcoin
 module Protocol
 Addr = Struct.new(:time, :service, :ip, :port) do

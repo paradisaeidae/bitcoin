@@ -120,7 +120,7 @@ as well as the private key for the address required to sign for it.
  prev_out_index = 0
  
  # fetch the tx from whereever you like and parse it
- prev_tx = Bitcoin::P::Tx.from_json(open("http://test.webbtc.com/tx/#{prev_hash}.json"))
+ prev_tx = Bitcoin::P::Tx.from_json(open("http://TBA/tx/#{prev_hash}.json"))
  
  # the key needed to sign an input that spends the previous output
  key = Bitcoin::Key.from_base58("92ZRu28m2GHSKaaF2W7RswJ2iJYpTzVhBaN6ZLs7TENCs4b7ML8")
@@ -137,7 +137,7 @@ as well as the private key for the address required to sign for it.
  
    # add an output that sends some bitcoins to another address
    t.output do |o|
-     o.value 50000000 # 0.5 BTC in satoshis
+     o.value 50000000 # 0.5 BSV in satoshis
      o.script {|s| s.recipient "mugwYJ1sKyr8EDDgXtoh8sdDQuNWKYNf88" }
    end
  
@@ -145,13 +145,13 @@ as well as the private key for the address required to sign for it.
    # if you want to pay a tx fee, reduce the value of this output accordingly
    # if you want to keep your financial history private, use a different address
    t.output do |o|
-     o.value 49000000 # 0.49 BTC, leave 0.01 BTC as fee
+     o.value 49000000 # 0.49 BSV, leave 0.01 BSV as fee
      o.script {|s| s.recipient key.addr }
    end
  
  end
  
- # examine your transaction. you can relay it through http://test.webbtc.com/relay_tx
+ # examine your transaction. you can relay it through http://TBA
  # that will also give you a hint on the error if something goes wrong
  puts new_tx.to_json
 

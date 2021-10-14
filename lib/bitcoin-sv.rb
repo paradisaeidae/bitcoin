@@ -1,11 +1,7 @@
-# encoding: ascii-8bit
 # Bitcoin Utils and Network Protocol in Ruby.
 # Previously a check would adjust Integer class according to Ruby version.
 # Ruby 3 unifies Fixnum and Bignum to Integer.
-require 'digest/sha2'
-require 'digest/rmd160'
-require 'openssl'
-require 'securerandom'
+['digest/sha2', 'digest/rmd160', 'openssl', 'securerandom'].each {| ment | require ment}
 module Bitcoin
 autoload :Connection,   'bitcoin/connection'
 autoload :Protocol,     'bitcoin/protocol'
@@ -115,26 +111,16 @@ def decode_base58(base58_val)
  leading_zero_bytes = (base58_val.match(/^([1]+)/) ? $1 : '').size
  s = ("00"*leading_zero_bytes) + s  if leading_zero_bytes > 0
  s end
+
 alias_method :base58_to_hex, :decode_base58
 
 # target compact bits (int) to bignum hex
 def decode_compact_bits(bits)
- if Bitcoin.network_project == :dogecoin
-  bytes = Array.new(size=((bits >> 24) & 255), 0)
-  bytes[0] = (bits >> 16) & 0x7f if size >= 1
-  bytes[1] = (bits >>  8) & 255 if size >= 2
-  bytes[2] = (bits      ) & 255 if size >= 3
-  target = bytes.pack("C*").unpack("H*")[0].rjust(64, '0')
-  # Bit number 24 represents the sign
-  if (bits & 0x00800000) != 0
-    "-" + target
-  else target end
- else
-  bytes = Array.new(size=((bits >> 24) & 255), 0)
-  bytes[0] = (bits >> 16) & 255 if size >= 1
-  bytes[1] = (bits >>  8) & 255 if size >= 2
-  bytes[2] = (bits      ) & 255 if size >= 3
-  bytes.pack("C*").unpack("H*")[0].rjust(64, '0') end end
+ bytes = Array.new(size=((bits >> 24) & 255), 0)
+ bytes[0] = (bits >> 16) & 255 if size >= 1
+ bytes[1] = (bits >>  8) & 255 if size >= 2
+ bytes[2] = (bits      ) & 255 if size >= 3
+ bytes.pack("C*").unpack("H*")[0].rjust(64, '0') end
 
 # target bignum hex to compact bits (int)
 def encode_compact_bits(target)
@@ -159,7 +145,8 @@ def generate_key
  key = bitcoin_elliptic_curve.generate_key
  inspect_key( key ) end
 
-def inspect_key(key);            [ key.private_key_hex, key.public_key_hex ] end
+def inspect_key(key)
+ [ key.private_key_hex, key.public_key_hex ] end
 
 def generate_address
  prvkey, pubkey = generate_key
@@ -174,15 +161,6 @@ def block_hash(prev_block, mrkl_root, time, bits, nonce, ver)
  h = "%08x%08x%08x%064s%064s%08x" %
   [nonce, bits, time, mrkl_root, prev_block, ver]
  bitcoin_hash(h) end
-
-def litecoin_hash(hex) # DEPRECATE
- bytes = [hex].pack("H*").reverse
- begin
-  require "scrypt" unless defined?(::SCrypt)
-  hash = SCrypt::Engine.__sc_crypt(bytes, bytes, 1024, 1, 1, 32)
- rescue LoadError
-  hash = Litecoin::Scrypt.scrypt_1024_1_1_256_sp(bytes) end
- hash.reverse.unpack("H*")[0] end
 
 def block_scrypt_hash(prev_block, mrkl_root, time, bits, nonce, ver)  # DEPRECATE???
  h = "%08x%08x%08x%064s%064s%08x" %
@@ -222,7 +200,7 @@ def sign_data(key, data)
  loop {
   sig = key.dsa_sign_asn1(data)
   sig = if Script.is_low_der_signature?(sig)
-     sig
+   sig
    else Bitcoin::OpenSSL_EC.signature_to_low_s(sig) end
   buf = sig + [Script::SIGHASH_TYPE[:all]].pack("C") # is_der_signature expects sig + sighash_type format
   if Script.is_der_signature?(buf)
@@ -231,17 +209,16 @@ def sign_data(key, data)
   return sig end
 
 def verify_signature(hash, signature, public_key)
- key  = bitcoin_elliptic_curve
+ key = bitcoin_elliptic_curve
  key.public_key = ::OpenSSL::PKey::EC::Point.from_hex(key.group, public_key)
  signature = Bitcoin::OpenSSL_EC.repack_der_signature(signature)
- if signature
-   key.dsa_verify_asn1(hash, signature)
+ if signature then key.dsa_verify_asn1(hash, signature)
  else false end
  rescue OpenSSL::PKey::ECError, OpenSSL::PKey::EC::Point::Error, OpenSSL::BNError
  false end
 
 def open_key(private_key, public_key=nil)
- key  = bitcoin_elliptic_curve
+ key = bitcoin_elliptic_curve
  key.private_key = ::OpenSSL::BN.from_hex(private_key)
  public_key = regenerate_public_key(private_key) unless public_key
  key.public_key  = ::OpenSSL::PKey::EC::Point.from_hex(key.group, public_key)
@@ -340,9 +317,9 @@ def block_creation_reward(block_height)
  Bitcoin.network[:reward_base] / (2 ** (block_height / Bitcoin.network[:reward_halving].to_f).floor) end end
 
 extend Util
-module  BinaryExtensions      # bin-to-hex
-def bth; unpack("H*")[0]; end # hex-to-bin
-def htb; [self].pack("H*"); end
+module  BinaryExtensions     
+def bth; unpack("H*")[0]; end     # bin-to-hex
+def htb; [self].pack("H*"); end   # hex-to-bin
 def htb_reverse; htb.reverse; end
 def hth; unpack("H*")[0]; end
 def reverse_hth; reverse.hth; end end
@@ -366,6 +343,7 @@ def self.from_hex(group, hex); new(group, BN.from_hex(hex)) end
 def to_hex; to_bn.to_hex; end
 def self.bn2mpi(hex) BN.from_hex(hex).to_mpi; end
 def ec_add(point); self.class.new(group, OpenSSL::BN.from_hex(OpenSSL_EC.ec_add(self, point))) end end end
+
 autoload :OpenSSL_EC, "bitcoin/ffi/openssl"
 autoload :Secp256k1, "bitcoin/ffi/secp256k1"
 autoload :BitcoinConsensus, "bitcoin/ffi/bitcoinconsensus"
@@ -382,6 +360,7 @@ def self.network=(name)
  @network = name.to_sym
  @network_project = network[:project] rescue nil
  @network end
+
 [:bitcoin, :bitcoin_testnet].each do |n| instance_eval "def #{n}?; network_project == :#{n}; end" end
 # maximum size of a block (in bytes)
 MAX_BLOCK_SIZE = 1_000_000
@@ -437,8 +416,7 @@ NETWORKS = {
   dns_seeds: [ "seed.bitcoin.sipa.be", "dnsseed.bluematt.me", "dnsseed.bitcoin.dashjr.org", "bitseed.xf2.org", "dnsseed.webbtc.com", ],
    genesis_hash: "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
    proof_of_work_limit: 0x1d00ffff,
-   known_nodes: [
-    'relay.eligius.st',   'mining.bitcoin.cz',   'blockchain.info',   'blockexplorer.com',   'webbtc.com', ],
+   known_nodes: [ 'relay.eligius.st',   'mining.bitcoin.cz',   'blockchain.info',   'blockexplorer.com',   'webbtc.com', ],
    checkpoints: {}}}
 NETWORKS[:testnet] = NETWORKS[:bitcoin].merge({
  magic_head: "\xFA\xBF\xB5\xDA",
@@ -458,7 +436,7 @@ NETWORKS[:regtest] = NETWORKS[:testnet].merge({
  genesis_hash: "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206",
  proof_of_work_limit: 0x207fffff,
  bip34_height: 0, })
-NETWORKS[:testnet3] = NETWORKS[:testnet].merge({
+NETWORKS[:testnet3] = NETWORKS[:regtest].merge({
  magic_head: "\x0B\x11\x09\x07",
  no_difficulty: true, # no good. add right testnet3 difficulty calculation instead
  genesis_hash: "000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943",

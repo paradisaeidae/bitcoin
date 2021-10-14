@@ -1,4 +1,20 @@
-require 'bitcoin'
+require 'bitcoin-sv'
+=begin
+https://github.com/bitcoin-sv-specs
+https://ramonquesada.com/glossary/opcodes-used-in-bitcoin-script/
+
+November 2018 additions:
+Word 	OpCode 	Hex 	Input 	Output 	Description
+OP_CAT   	126 	0x7e 	x1 x2 	out 	Concatenates two byte sequences
+OP_SPLIT 	127 	0x7f 	x n 	x1 x2 	Split byte sequence x at position n
+OP_AND  	132 	0x84 	x1 x2 	out 	Boolean AND between each bit of the inputs
+OP_OR   	133 	0x85 	x1 x2 	out 	Boolean OR between each bit of the inputs
+OP_XOR  	134 	0x86 	x1 x2 	out 	Boolean EXCLUSIVE OR between each bit of the inputs
+OP_DIV 	    150 	0x96 	a b 	out 	a is divided by b
+OP_MOD  	151 	0x97 	a b 	out 	return the remainder after a is divided by b
+OP_NUM2BIN 	128 	0x80 	a b 	out 	convert numeric value a into byte sequence of length b
+OP_BIN2NUM 	129 	0x81 	x 	out 	convert byte sequence x into a numeric value
+=end
 class Bitcoin::Script
 OP_0           = 0
 OP_FALSE       = 0
@@ -96,9 +112,10 @@ OP_2DUP = 110
 OP_3DUP = 111
 OP_NIP = 119
 OP_CAT = 126
-OP_SUBSTR = 127
-OP_LEFT = 128
-OP_RIGHT = 129
+# DEPR OP_SUBSTR = 127
+OP_SPLIT = 127
+# DEPR OP_LEFT = 128
+# DEPR OP_RIGHT = 129
 OP_INVERT = 131
 OP_AND = 132
 OP_OR = 133
@@ -120,9 +137,9 @@ OPCODES_ALIAS = {
  "OP_EVAL" => OP_NOP1,
  "OP_CHECKHASHVERIFY" => OP_NOP2, }
 DISABLED_OPCODES = [
- OP_CAT, OP_SUBSTR, OP_LEFT, OP_RIGHT, OP_INVERT,
- OP_AND, OP_OR, OP_XOR, OP_2MUL, OP_2DIV, OP_MUL,
- OP_DIV, OP_MOD, OP_LSHIFT, OP_RSHIFT ]
+ OP_CAT, OP_SUBSTR, OP_LEFT, OP_RIGHT,
+ OP_AND, OP_OR, OP_XOR, OP_2MUL, OP_2DIV,
+ OP_DIV, OP_MOD ] #  OP_MUL, OP_LSHIFT, OP_RSHIFT, and OP_INVERT Restored
 OP_2_16 = (82..96).to_a
 OPCODES_PARSE_BINARY = {}
 OPCODES.each{|k,v| OPCODES_PARSE_BINARY[k] = v }
@@ -171,8 +188,7 @@ def parse(bytes, offset=0) # parse raw script
   opcode = program.shift
   if (opcode > 0) && (opcode < OP_PUSHDATA1)
    len, tmp = opcode, program[0]
-   chunks << program.shift(len).pack("C*")
-   # 0x16 = 22 due to OP_2_16 from_string parsing
+   chunks << program.shift(len).pack("C*")   # 0x16 = 22 due to OP_2_16 from_string parsing
    if len == 1 && tmp && tmp <= 22
     chunks.last.bitcoin_pushdata = OP_PUSHDATA0
     chunks.last.bitcoin_pushdata_length = len
@@ -200,14 +216,14 @@ def parse(bytes, offset=0) # parse raw script
    else raise "invalid OP_PUSHDATA4" if len != chunks.last.bytesize end
   else chunks << opcode end end
  chunks
-rescue => ex
- # bail out! #run returns false but serialization roundtrips still create the right payload.
- chunks.pop if ex.message.include?("invalid OP_PUSHDATA")
- @parse_invalid = true
- c = bytes.unpack("C*").pack("C*")
- c.bitcoin_pushdata = OP_PUSHDATA_INVALID
- c.bitcoin_pushdata_length = c.bytesize
- chunks << c end
+ rescue => ex
+  # bail out! #run returns false but serialization roundtrips still create the right payload.
+  chunks.pop if ex.message.include?("invalid OP_PUSHDATA")
+  @parse_invalid = true
+  c = bytes.unpack("C*").pack("C*")
+  c.bitcoin_pushdata = OP_PUSHDATA_INVALID
+  c.bitcoin_pushdata_length = c.bytesize
+  chunks << c end
 
 def to_string(chunks=nil) # string representation of the script
  string = ""
@@ -215,9 +231,8 @@ def to_string(chunks=nil) # string representation of the script
   string << " " unless idx == 0
   string << case i
   when Bitcoin::Integer
-    if opcode = OPCODES_PARSE_BINARY[i]
-      opcode
-    else "(opcode-#{i})" end
+   if opcode = OPCODES_PARSE_BINARY[i] then opcode
+   else "(opcode-#{i})" end
   when String
    if i.bitcoin_pushdata
     "#{i.bitcoin_pushdata}:#{i.bitcoin_pushdata_length}:".force_encoding('binary') + i.unpack("H*")[0]
@@ -491,8 +506,7 @@ def check_pushes(push_only=true, canonical_only=false, buf)
  true
 rescue
  # catch parsing errors
- false
-end
+ false end
 
 # get type of this tx
 def type
@@ -671,8 +685,7 @@ def sigops_count_accurate(is_accurate)
   count = 0
   last_opcode = nil
   @chunks.each do |chunk| # pushdate or opcode
-   if chunk == OP_CHECKSIG || chunk == OP_CHECKSIGVERIFY
-    count += 1
+   if chunk == OP_CHECKSIG || chunk == OP_CHECKSIGVERIFY then count += 1
    elsif chunk == OP_CHECKMULTISIG || chunk == OP_CHECKMULTISIGVERIFY
     # Accurate mode counts exact number of pubkeys required (not signatures, but pubkeys!). Only used in P2SH scripts.
     # Inaccurate mode counts every multisig as 20 signatures.
@@ -711,18 +724,26 @@ def self.decode_OP_N(opcode)
  if opcode.is_a?(Bitcoin::Integer) && opcode >= OP_1 && opcode <= OP_16
   return opcode - (OP_1 - 1);
  else nil end end
+
+=begin
+Additionally, the first release of Bitcoin SV will restore four “Satoshi opcodes” — 
+scripting operations that had originally been included in Bitcoin but were disabled in later software updates. 
+These opcodes are: OP_MUL, OP_LSHIFT, OP_RSHIFT, and OP_INVERT. 
+Additionally, Bitcoin SV will remove the limit of 201 opcodes per individual script.
+=end
+
 ## OPCODES
 # Does nothing
-def op_nop; end
-def op_nop1; end
-def op_nop2; end
-def op_nop3; end
-def op_nop4; end
-def op_nop5; end
-def op_nop6; end
-def op_nop7; end
-def op_nop8; end
-def op_nop9; end
+def op_nop;   end
+def op_nop1;  end
+def op_nop2;  end
+def op_nop3;  end
+def op_nop4;  end
+def op_nop5;  end
+def op_nop6;  end
+def op_nop7;  end
+def op_nop8;  end
+def op_nop9;  end
 def op_nop10; end
 
 def op_dup # Duplicates the top stack item.
@@ -801,8 +822,8 @@ def op_not # If the input is 0 or 1, it is flipped. Otherwise the output will be
  @stack << (a == 0 ? 1 : 0) end
 
 def op_0notequal
-  a = pop_int
-  @stack << (a != 0 ? 1 : 0) end
+ a = pop_int
+ @stack << (a != 0 ? 1 : 0) end
 
 def op_abs # The input is made positive.
  a = pop_int
@@ -813,8 +834,8 @@ def op_2div # The input is divided by 2. Currently disabled.
  @stack << (a >> 1) end
 
 def op_2mul # The input is multiplied by 2. Currently disabled.
-  a = pop_int
-  @stack << (a << 1) end
+ a = pop_int
+ @stack << (a << 1) end
 
 def op_1add # 1 is added to the input.
  a = pop_int
@@ -839,12 +860,13 @@ def op_equal # Returns 1 if the inputs are exactly equal, 0 otherwise.
 def op_verify
  res = pop_int
  if cast_to_bool(res) == false
-   @stack << res
-   @script_invalid = true # raise 'transaction invalid' ?
+  @stack << res
+  @script_invalid = true # raise 'transaction invalid' ?
  else @script_invalid = false end end
 
 def op_equalverify # Same as OP_EQUAL, but runs OP_VERIFY afterward.
- op_equal; op_verify end
+ op_equal
+ op_verify end
 
 def op_0 # An empty array of bytes is pushed onto the stack.
  @stack << "" end # []
@@ -1003,21 +1025,20 @@ def cast_to_bool(buf)
  buf.each.with_index{|byte,index|
   if byte != 0
    # Can be negative zero
-   if (index == (size-1)) && byte == 0x80
-     return false
-   else
-     return true end end }
+   if (index == (size-1)) && byte == 0x80 then return false
+   else return true end end }
  return false end
 
 # Same as OP_NUMEQUAL, but runs OP_VERIFY afterward.
 def op_numequalverify
- op_numequal; op_verify end
+ op_numequal
+ op_verify end
 
 # All of the signature checking words will only match signatures
 # to the data after the most recently-executed OP_CODESEPARATOR.
 def op_codeseparator
-  @codehash_start = @chunks.size - @chunks.reverse.index(OP_CODESEPARATOR)
-  @last_codeseparator_index = @chunk_last_index end
+ @codehash_start = @chunks.size - @chunks.reverse.index(OP_CODESEPARATOR)
+ @last_codeseparator_index = @chunk_last_index end
 
 def codehash_script(opcode)
  # CScript scriptCode(pbegincodehash, pend);
@@ -1041,14 +1062,13 @@ def op_checksig(check_callback, opts={})
  if check_callback == nil # for tests
   @stack << 1
  else # real signature check callback
-  @stack <<
-    ((check_callback.call(pubkey, sig, hash_type, subscript) == true) ? 1 : 0) end end
+  @stack << ((check_callback.call(pubkey, sig, hash_type, subscript) == true) ? 1 : 0) end end
 
 def sighash_subscript(drop_sigs, opts = {})
  if opts[:fork_id]
   drop_sigs.reject! do |signature|
    if signature && signature.size > 0
-     _, hash_type = parse_sig(signature)
+     _, hash_type = parse_sig(signature) # The underscore adds as a placeholder for the variable matching inside Ruby. It is just as greedy as any named variable, but as it is not named, you cannot access it later on. 
      (hash_type&SIGHASH_TYPE[:forkid]) != 0 end end end
  if inner_p2sh? && @inner_script_code
   ::Bitcoin::Script.new(@inner_script_code).to_binary_without_signatures(drop_sigs)
@@ -1058,6 +1078,17 @@ def sighash_subscript(drop_sigs, opts = {})
 def op_checksigverify(check_callback, opts={})
  op_checksig(check_callback, opts)
  op_verify end
+
+=begin
+Bitcoin ABC, the full node implementation developed by Amaury Séchet and currently used by most miners, 
+has announced plans to activate, among other changes, two new opcodes during the protocol’s November hard fork 
+— OP_CHECKDATASIG and OP_CHECKDATASIGVERIFY — as well as implement canonical transaction ordering.
+These proposals have been met with strong resistance by Wright and Ayre, who have argued that,
+ among other things, these opcodes could lead to “unlicensed gambling” since they can be used to 
+implement “oracle” services such as those that make decentralized prediction markets possible.
+ Ayre, incidentally, made his fortune through an online gambling empire, though it is Wright in particular
+ who has used this as an argument against these opcodes.
+=end
 
 # do a CHECKMULTISIG operation on the current stack,
 # asking +check_callback+ to do the actual signature verification.
@@ -1076,7 +1107,7 @@ def op_checkmultisig(check_callback, opts={})
  return invalid if @stack.size < 1
  n_pubkeys = pop_int
  return invalid  unless (0..20).include?(n_pubkeys)
- #return invalid  if (nOpCount += n_pubkeys) > 201
+ #return invalid  if (nOpCount += n_pubkeys) > 201 # Bitcoin SV removes the limit of 201 opcodes per individual script.
  return invalid if @stack.size < n_pubkeys
  pubkeys = pop_string(n_pubkeys)
  return invalid if @stack.size < 1
@@ -1122,11 +1153,11 @@ def self.is_compressed_or_uncompressed_pub_key?(pubkey)
  return false if pubkey.bytesize < 33 # "Non-canonical public key: too short"
  case pubkey[0]
  when "\x04"
-   return false if pubkey.bytesize != 65 # "Non-canonical public key: invalid length for uncompressed key"
+  return false if pubkey.bytesize != 65 # "Non-canonical public key: invalid length for uncompressed key"
  when "\x02", "\x03"
-   return false if pubkey.bytesize != 33 # "Non-canonical public key: invalid length for compressed key"
+  return false if pubkey.bytesize != 33 # "Non-canonical public key: invalid length for compressed key"
  else
-   return false # "Non-canonical public key: compressed nor uncompressed" 
+  return false # "Non-canonical public key: compressed nor uncompressed" 
  end
  true end
 
@@ -1200,6 +1231,6 @@ def self.is_defined_hashtype_signature?(sig)
 
 private
 def parse_sig(sig)
-  hash_type = sig[-1].unpack("C")[0]
-  sig = sig[0...-1]
-  return sig, hash_type end end
+ hash_type = sig[-1].unpack("C")[0]
+ sig = sig[0...-1]
+ return sig, hash_type end end
