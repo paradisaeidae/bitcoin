@@ -36,8 +36,7 @@ def self.init
  ffi_load_functions(lib_path)
  @bitcoin_consensus = true end
 
-# api version
-def self.version
+def self.version # api version
  init
  bitcoinconsensus_version end
 

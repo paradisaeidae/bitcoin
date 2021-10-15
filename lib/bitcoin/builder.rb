@@ -221,29 +221,17 @@ def sign_input(i, inc)
  # when a sig_script was found, generate the sig_hash to be signed
  if sig_script
   script = Script.new(sig_script)
-  @sig_hash = \
- #DEPR if script.is_witness_v0_keyhash?
- #DEPR  @tx.signature_hash_for_witness_input(i, sig_script, inc.value)
- #DEPR  els
-  if inc.prev_out_forkid
+  @sig_hash = if inc.prev_out_forkid
    @tx.signature_hash_for_input( i, sig_script, hash_type, inc.value, inc.prev_out_forkid )
    else @tx.signature_hash_for_input(i, sig_script) end end
+
  # when there is a sig_hash and one or more signature_keys were specified
  if sig_hash_and_all_keys_exist?(inc, sig_script) # add the script_sig to the txin
-  #DEPR if script.is_witness_v0_keyhash? # for p2wpkh
-  #DEPR  @tx.in[i].script_witness.stack << inc.sign(@sig_hash) + [Script::SIGHASH_TYPE[:all]].pack('C')
-  #DEPR  @tx.in[i].script_witness.stack << inc.key.pub.htb
-  #DEPR  redeem_script = inc.instance_eval { @redeem_script }
-  #DEPR  @tx.in[i].script_sig = Bitcoin::Script.pack_pushdata(redeem_script) if redeem_script
-  #DEPR else @tx.in[i].script_sig = get_script_sig(inc, hash_type) end
-  @tx.in[i].script_sig = get_script_sig(inc, hash_type) end
+  @tx.in[i].script_sig = get_script_sig(inc, hash_type)
   # double-check that the script_sig is valid to spend the given prev_script
   if @prev_script && !inc.prev_out_forkid            # ???
-   #DEPR  verified = if script.is_witness_v0_keyhash?
-   #DEPR  @tx.verify_witness_input_signature(i, @prev_script, inc.value)
-   #DEPR else @tx.verify_input_signature(i, @prev_script) end
-  verified = @tx.verify_input_signature(i, @prev_script)
-  raise 'Signature error' unless verified end
+   verified = @tx.verify_input_signature(i, @prev_script)
+   raise 'Signature error' unless verified end
  elsif inc.multiple_keys? then raise 'Keys missing for multisig signing'
  else add_empty_script_sig_to_input(i) end end  # no sig_hash, add an empty script_sig.
 
@@ -301,8 +289,8 @@ def prev_out(tx, idx = nil, script = nil, prev_value = nil, prev_forkid = nil)
 
 # Index of the output in the #prev_out transaction.
 def prev_out_index(i)
-  @prev_out_index = i
-  @prev_out_script = @prev_tx.out[i].pk_script if @prev_tx end
+ @prev_out_index = i
+ @prev_out_script = @prev_tx.out[i].pk_script if @prev_tx end
 
 # Previous output's +pk_script+. Needed when only the tx hash is specified as #prev_out.
 def prev_out_script(script) # rubocop:disable Style/TrivialAccessors
