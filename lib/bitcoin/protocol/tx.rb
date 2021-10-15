@@ -96,31 +96,13 @@ def parse_data_from_io(data)
 
 alias parse_data parse_data_from_io
 
-def to_payload # output transaction in raw binary format
- witness? ? to_witness_payload : to_old_payload end
-
-def to_old_payload
+def to_payload
  pin = ''
  @in.each { |input| pin << input.to_payload }
  pout = ''
  @out.each { |output| pout << output.to_payload }
  [@ver].pack('V') << Protocol.pack_var_int(@in.size) \
-  << pin << Protocol.pack_var_int(@out.size) \
-  << pout << [@lock_time].pack('V') end
-
-
-def to_witness_payload # output transaction in raw binary format with witness
-  buf = [@ver, MARKER, FLAG].pack('Vcc')
-  buf << Protocol.pack_var_int(@in.length) << @in.map(&:to_payload).join
-  buf << Protocol.pack_var_int(@out.length) << @out.map(&:to_payload).join
-  buf << witness_payload << [@lock_time].pack('V')
-  buf end
-
-def witness_payload
-  @in.map { |i| i.script_witness.to_payload }.join end
-
-def witness?
-  !@in.find { |i| !i.script_witness.empty? }.nil? end
+  << pin << Protocol.pack_var_int(@out.size) << pout << [@lock_time].pack('V') end
 
 # generate a signature hash for input +input_idx+.
 # either pass the +outpoint_tx+ or the +script_pubkey+ directly.

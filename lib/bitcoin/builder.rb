@@ -147,16 +147,14 @@ def output(value = nil, recipient = nil, type = :address)
 # change output.
 # rubocop:disable CyclomaticComplexity,PerceivedComplexity
 def tx(opts = {})
- return @tx  if @tx.hash
- if opts[:change_address] && !opts[:input_value]
-  raise "Must give 'input_value' when auto-generating change output!" end
- @ins.each { |i| @tx.add_in(i.txin) }
+ return @tx if @tx.hash
+ if opts[:change_address] && !opts[:input_value] then raise "Must give 'input_value' when auto-generating change output!" end
+ @ins.each {  |i| @tx.add_in(i.txin) }
  @outs.each { |o| @tx.add_out(o.txout) }
  if opts[:change_address]
   output_value = @tx.out.map(&:value).inject(:+) || 0
   change_value = opts[:input_value] - output_value
-  if opts[:leave_fee]
-   fee = @tx.minimum_block_fee + (opts[:extra_fee] || 0)
+  if opts[:leave_fee] then fee = @tx.minimum_block_fee + (opts[:extra_fee] || 0)
    if change_value >= fee then change_value -= fee
    else change_value = 0 end end
   if change_value > 0
@@ -164,7 +162,7 @@ def tx(opts = {})
    @tx.add_out(P::TxOut.new(change_value, script)) end end
  @ins.each_with_index do |inc, i| sign_input(i, inc) end
  # run our tx through an encode/decode cycle to make sure that the binary format is sane
- raise 'Payload Error' unless P::Tx.new(@tx.to_witness_payload).to_payload == @tx.to_payload
+ raise 'Payload Error' unless P::Tx.new(@tx.to_payload) == @tx.to_payload
  @tx.instance_eval do
   @payload = to_payload
   @hash = hash_from_payload(@payload) end
@@ -180,7 +178,6 @@ def sig_hash_and_all_keys_exist?(inc, sig_script)
  return false unless @sig_hash && inc.keys?
  script = Bitcoin::Script.new(sig_script)
  return true if script.is_hash160? || script.is_pubkey?
- # || #DEPR script.is_witness_v0_keyhash? || (Bitcoin.namecoin? && script.is_namecoin?)
  if script.is_multisig?
   return inc.multiple_keys? && inc.key.size >= script.get_signatures_required end
  raise 'Script type must be hash160, pubkey, p2wpkh or multisig' end
@@ -345,14 +342,6 @@ def keys?
 def has_keys? # rubocop:disable Naming/PredicateName
  warn '[DEPRECATION] `TxInBuilder.has_keys?` is deprecated. Use `keys?` instead.'
  keys? end
-
-def witness_v0_keyhash? # DEPRECATE
- @prev_out_script && Script.new(@prev_out_script).is_witness_v0_keyhash? end
-
-#DEPR def is_witness_v0_keyhash? # rubocop:disable Naming/PredicateName  DEPRECATE
-#DEPR  warn '[DEPRECATION] `TxInBuilder.is_witness_v0_keyhash?` is deprecated. ' \
-#DEPR   'Use `witness_v0_keyhash?` instead.'
-#DEPR  witness_v0_keyhash? end
 
 def sign(sig_hash)
  if multiple_keys?
