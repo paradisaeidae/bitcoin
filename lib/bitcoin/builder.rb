@@ -229,7 +229,7 @@ def sign_input(i, inc)
  if sig_hash_and_all_keys_exist?(inc, sig_script) # add the script_sig to the txin
   @tx.in[i].script_sig = get_script_sig(inc, hash_type)
   # double-check that the script_sig is valid to spend the given prev_script
-  if @prev_script && !inc.prev_out_forkid            # ???
+  if @prev_script && !inc.prev_out_forkid
    verified = @tx.verify_input_signature(i, @prev_script)
    raise 'Signature error' unless verified end
  elsif inc.multiple_keys? then raise 'Keys missing for multisig signing'

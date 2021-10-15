@@ -767,49 +767,6 @@ describe Bitcoin::Protocol::Tx do
     expect(tx.verify_input_signature(0, outpoint_tx)).to be true
   end
 
-  it '#verify_witness_input_signature' do
-    # P2WPKH
-    tx = Bitcoin::Protocol::Tx.new(
-      '01000000000102fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4' \
-      'e4ad969f00000000494830450221008b9d1dc26ba6a9cb62127b02742fa9d754cd3beb' \
-      'f337f7a55d114c8e5cdd30be022040529b194ba3f9281a99f2b1c0a19c0489bc22ede9' \
-      '44ccf4ecbab4cc618ef3ed01eeffffffef51e1b804cc89d182d279655c3aa89e815b1b' \
-      '309fe287d9b2b55d57b90ec68a0100000000ffffffff02202cb206000000001976a914' \
-      '8280b37df378db99f66f85c95a783a76ac7a6d5988ac9093510d000000001976a9143b' \
-      'de42dbee7e4dbe6a21b2d50ce2f0167faa815988ac000247304402203609e17b84f6a7' \
-      'd30c80bfa610b5b4542f32a8a0d5447a12fb1366d7f01cc44a0220573a954c45183315' \
-      '61406f90300e8f3358f51928d43c212a8caed02de67eebee0121025476c2e83188368d' \
-      'a1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee635711000000'.htb
-    )
-    expect(
-      tx.verify_witness_input_signature(
-        1, '00141d0f172a0ecb48aee1be1f2687d2963ae33f71a1'.htb, 600_000_000
-      )
-    ).to be true
-
-    # P2WSH
-    tx = Bitcoin::Protocol::Tx.new(
-      '01000000000102fe3dc9208094f3ffd12645477b3dc56f60ec4fa8e6f5d67c565d1c6b' \
-      '9216b36e000000004847304402200af4e47c9b9629dbecc21f73af989bdaa911f7e6f6' \
-      'c2e9394588a3aa68f81e9902204f3fcf6ade7e5abb1295b6774c8e0abd94ae62217367' \
-      '096bc02ee5e435b67da201ffffffff0815cf020f013ed6cf91d29f4202e8a58726b1ac' \
-      '6c79da47c23d1bee0a6925f80000000000ffffffff0100f2052a010000001976a914a3' \
-      '0741f8145e5acadf23f751864167f32e0963f788ac000347304402200de66acf452778' \
-      '9bfda55fc5459e214fa6083f936b430a762c629656216805ac0220396f550692cd3471' \
-      '71cbc1ef1f51e15282e837bb2b30860dc77c8f78bc8501e503473044022027dc95ad6b' \
-      '740fe5129e7e62a75dd00f291a2aeb1200b84b09d9e3789406b6c002201a9ecd315dd6' \
-      'a0e632ab20bbb98948bc0c6fb204f2c286963bb48517a7058e27034721026dccc749ad' \
-      'c2a9d0d89497ac511f760f45c47dc5ed9cf352a58ac706453880aeadab210255a9626a' \
-      'ebf5e29c0e6538428ba0d1dcf6ca98ffdf086aa8ced5e0d0215ea465ac00000000'.htb
-    )
-    expect(
-      tx.verify_witness_input_signature(
-        1,
-        '00205d1b56b63d714eebe542309525f484b7e9d6f686b3781b6f61ef925d66d6f6a0'.htb,
-        4_900_000_000
-      )
-    ).to be true
-
     # P2SH-P2WPKH
     tx = Bitcoin::Protocol::Tx.new(
       '01000000000101db6b1b20aa0fd7b23880be2ecbd4a98130974cf4748fb66092ac4d3c' \
@@ -821,13 +778,6 @@ describe Bitcoin::Protocol::Tx do
       '9dcb012103ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a2' \
       '687392040000'.htb
     )
-    expect(
-      tx.verify_witness_input_signature(
-        0,
-        'a9144733f37cf4db86fbc2efed2500b4f4e49f31202387'.htb,
-        1_000_000_000
-      )
-    ).to be true
 
     # P2SH-P2WSH
     tx = Bitcoin::Protocol::Tx.new(
@@ -855,11 +805,6 @@ describe Bitcoin::Protocol::Tx do
       'a04d9737d61acdaa1322008af9602b3b14862c07a1789aac162102d8b661b0b3302ee2' \
       'f162b09e07a55ad5dfbe673a9f01d9f0c19617681024306b56ae00000000'.htb
     )
-    expect(
-      tx.verify_witness_input_signature(
-        0, 'a9149993a429037b5d912407a71c252019287b8d27a587'.htb, 987_654_321
-      )
-    ).to be true
   end
 
   describe '#signature_hash_for_input' do

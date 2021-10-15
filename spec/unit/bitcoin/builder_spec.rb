@@ -121,10 +121,6 @@ describe Bitcoin::Builder do
         i.signature_key key
       end
     end
-
-    expect(
-      tx.verify_witness_input_signature(0, script_pubkey, 600_000_000)
-    ).to be true
     expect(tx.in[0].script_sig).to eq('')
   end
 
@@ -158,10 +154,6 @@ describe Bitcoin::Builder do
         i.signature_key key
       end
     end
-
-    expect(
-      tx.verify_witness_input_signature(0, witness_prog, 600_000_000)
-    ).to be true
     expect(tx.in[0].script_sig).to eq(Bitcoin::Script.pack_pushdata(witness_prog))
   end
 
