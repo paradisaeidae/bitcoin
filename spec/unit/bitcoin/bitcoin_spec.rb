@@ -829,7 +829,7 @@ describe Bitcoin do
 
   describe '.encode_base58 / decode_base58' do
     it 'passes tests from bitcoin core' do
-      # fixtures from: https://github.com/bitcoin/bitcoin/blob/master/src/test/base58_tests.cpp
+      # fixtures from: https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/test/base58_tests.cpp
       bin = [
         '',
         "\x61",
@@ -952,12 +952,12 @@ describe Bitcoin do
 
   describe 'bitcoin base58 test vectors' do
     # Port of Bitcoin Core test vectors.
-    # https://github.com/bitcoin/bitcoin/blob/595a7bab23bc21049526229054ea1fff1a29c0bf/src/test/base58_tests.cpp#L139
+    # https://github.com/bitcoin-sv/bitcoin-sv/blob/595a7bab23bc21049526229054ea1fff1a29c0bf/src/test/base58_tests.cpp#L139
     let(:valid_base58_keys) do
       JSON.parse(fixtures_file('base58_keys_valid.json'))
     end
     # Port of Bitcoin Core test vectors.
-    # https://github.com/bitcoin/bitcoin/blob/595a7bab23bc21049526229054ea1fff1a29c0bf/src/test/base58_tests.cpp#L179
+    # https://github.com/bitcoin-sv/bitcoin-sv/blob/595a7bab23bc21049526229054ea1fff1a29c0bf/src/test/base58_tests.cpp#L179
     let(:invalid_base58_keys) do
       JSON.parse(fixtures_file('base58_keys_invalid.json'))
     end

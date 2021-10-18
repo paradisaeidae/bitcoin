@@ -108,10 +108,10 @@ def to_payload
 # either pass the +outpoint_tx+ or the +script_pubkey+ directly.
 def signature_hash_for_input(
   input_idx, subscript, hash_type = nil, prev_out_value = nil, fork_id = nil)
-  # https://github.com/bitcoin/bitcoin/blob/e071a3f6c06f41068ad17134189a4ac3073ef76b/script.cpp#L834
+  # https://github.com/bitcoin-sv/bitcoin-sv/blob/e071a3f6c06f41068ad17134189a4ac3073ef76b/script.cpp#L834
   # http://code.google.com/p/bitcoinj/source/browse/trunk/src/com/google/bitcoin/core/Script.java#318
   # https://en.bitcoin.it/wiki/OP_CHECKSIG#How_it_works
-  # https://github.com/bitcoin/bitcoin/blob/c2e8c8acd8ae0c94c70b59f55169841ad195bb99/src/script.cpp#L1058
+  # https://github.com/bitcoin-sv/bitcoin-sv/blob/c2e8c8acd8ae0c94c70b59f55169841ad195bb99/src/script.cpp#L1058
   # https://en.bitcoin.it/wiki/OP_CHECKSIG
   hash_type ||= SIGHASH_TYPE[:all]
   # fork_id is optional and if set, SIGHASH_FORKID flag as defined by the
