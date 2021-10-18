@@ -12,27 +12,23 @@ describe 'BIP143 spec' do
       '969f0000000000eeffffffef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9' \
       'b2b55d57b90ec68a0100000000ffffffff02202cb206000000001976a9148280b37df3' \
       '78db99f66f85c95a783a76ac7a6d5988ac9093510d000000001976a9143bde42dbee7e' \
-      '4dbe6a21b2d50ce2f0167faa815988ac11000000'.htb
-    )
+      '4dbe6a21b2d50ce2f0167faa815988ac11000000'.htb )
 
     sig_hash0 = tx.signature_hash_for_input(
       0,
-      '2103c9f4836b9a4f77fc0d81f7bcb01b7f1b35916864b9476c241ce9fc198bd25432ac'.htb
-    )
+      '2103c9f4836b9a4f77fc0d81f7bcb01b7f1b35916864b9476c241ce9fc198bd25432ac'.htb )
     sig0 = Bitcoin::Secp256k1.sign(
       sig_hash0,
       'bbc27228ddcb9209d7fd6f36b02f7dfa6252af40bb2f1cbc7a557da8027ff866'.htb
     ) + [Bitcoin::Protocol::Tx::SIGHASH_TYPE[:all]].pack('C')
 
     tx.in[0].script_sig = Bitcoin::Script.new(
-      Bitcoin::Script.pack_pushdata(sig0)
-    ).to_payload
+      Bitcoin::Script.pack_pushdata(sig0) ).to_payload
 
     sig_hash1 = tx.signature_hash_for_witness_input(
       1,
       '00141d0f172a0ecb48aee1be1f2687d2963ae33f71a1'.htb,
-      600_000_000
-    )
+      600_000_000 )
     sig1 = Bitcoin::Secp256k1.sign(
       sig_hash1,
       '619c335025c7f4012e556c2a58b2506e30b8511b53ade95ea316fd8c3286feb9'.htb

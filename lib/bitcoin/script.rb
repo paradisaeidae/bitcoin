@@ -1099,7 +1099,7 @@ implement “oracle” services such as those that make decentralized prediction
 #  0 <sig1> <sig2> <sig3> | 3 <pub1> <pub2> <pub3> 3 OP_CHECKMULTISIG
 #
 # see https://en.bitcoin.it/wiki/BIP_0011 for details.
-# see https://github.com/bitcoin/bitcoin/blob/master/src/script.cpp#L931
+# see https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/script.cpp#L931
 #
 # TODO: validate signature order
 # TODO: take global opcode count

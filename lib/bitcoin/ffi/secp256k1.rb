@@ -3,7 +3,7 @@
 require 'ffi'
 
 module Bitcoin
-  # bindings for secp256k1 inside bitcoin (https://github.com/bitcoin/bitcoin/tree/v0.13.1/src/secp256k1)
+  # bindings for secp256k1 inside bitcoin (https://github.com/bitcoin-sv/bitcoin-sv/tree/v0.13.1/src/secp256k1)
   # tag: v0.13.1
   # commit: 03422e564b552c1d3c16ae854f8471f7cb39e25d
   #  bitcoin@master% git checkout v0.13.1
@@ -38,7 +38,7 @@ module Bitcoin
         ffi_lib [ %[#{file}] ]
 
         ##
-        # source: https://github.com/bitcoin/bitcoin/blob/v0.13.1/src/secp256k1/include/secp256k1.h
+        # source: https://github.com/bitcoin-sv/bitcoin-sv/blob/v0.13.1/src/secp256k1/include/secp256k1.h
         ##
 
         # secp256k1_context* secp256k1_context_create(unsigned int flags)

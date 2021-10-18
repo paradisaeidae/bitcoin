@@ -1,8 +1,7 @@
 require 'ffi'
 module Bitcoin
-# binding for src/.libs/bitcoinconsensus.so (https://github.com/bitcoin/bitcoin)
+# binding for src/.libs/bitcoinconsensus.so (https://github.com/bitcoin-sv/bitcoin-sv)
 # tag: v0.11.0
-# commit: d26f951802c762de04fb68e1a112d611929920ba
 module BitcoinConsensus
 extend FFI::Library
 SCRIPT_VERIFY_NONE      = 0
@@ -25,9 +24,8 @@ def self.ffi_load_functions(file)
   attach_function :bitcoinconsensus_verify_script, [:pointer, :uint, :pointer, :uint, :uint, :uint, :pointer], :int
  RUBY end
 
-def self.lib_available?
- @__lib_path ||= [ # rubocop:disable Naming/MemoizedInstanceVariableName
-   ENV['BITCOINCONSENSUS_LIB_PATH'], 'vendor/bitcoin/src/.libs/libbitcoinconsensus.so'
+def self.lib_available?   # rubocop:disable Naming/MemoizedInstanceVariableName
+ @__lib_path ||= [ENV['BITCOINCONSENSUS_LIB_PATH'], 'vendor/bitcoin/src/.libs/libbitcoinconsensus.so'
  ].find { |f| File.exist?(f.to_s) } end
 
 def self.init
