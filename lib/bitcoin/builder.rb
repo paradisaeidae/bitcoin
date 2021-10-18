@@ -195,13 +195,9 @@ def get_script_sig(inc, hash_type)
   sigs = inc.sign(@sig_hash)
   redeem_script = inc.instance_eval { @redeem_script }
   if redeem_script then script_sig = Script.to_multisig_script_sig(*sigs) end
-  # DEPR when a redeem_script was specified, assume we spend a p2sh multisig script
-  # DEPR script_sig = Script.to_p2sh_multisig_script_sig(redeem_script, sigs)
-  # DEPR else                 
   # when no redeem_script is given, do a regular multisig spend
  else
-  # only one key given, generate signature and script_sig
-  sig = inc.sign(@sig_hash)
+  sig = inc.sign(@sig_hash) # only one key given, generate signature and script_sig
   script_sig = Script.to_signature_pubkey_script(sig, [inc.key.pub].pack('H*'), hash_type) end
  script_sig end
 
@@ -232,9 +228,7 @@ def sign_input(i, inc)
  elsif inc.multiple_keys? then raise 'Keys missing for multisig signing'
  else add_empty_script_sig_to_input(i) end end  # no sig_hash, add an empty script_sig.
 
-# rubocop:enable CyclomaticComplexity,PerceivedComplexity
-# Randomize the outputs using SecureRandom
-def randomize_outputs
+def randomize_outputs # Randomize the outputs using SecureRandom
  @outs.sort_by! { SecureRandom.random_bytes(4).unpack('I')[0] } end end
 #______________________________________________________________________
 
@@ -344,27 +338,26 @@ def has_keys? # rubocop:disable Naming/PredicateName
  keys? end
 
 def sign(sig_hash)
- if multiple_keys?
-   @key.map { |k| k.sign(sig_hash) }
+ if multiple_keys? then @key.map { |k| k.sign(sig_hash) }
  else @key.sign(sig_hash) end end end
 
 # Create a Bitcoin::Script used by TxOutBuilder#script.
 class ScriptBuilder
 attr_reader :script, :redeem_script
 def initialize
-  @type = :address
-  @script = nil end
+ @type = :address
+ @script = nil end
 
 # Script type (:pubkey, :address/hash160, :multisig).
 # Defaults to :address.
 def type(type)
-  @type = type.to_sym end
+ @type = type.to_sym end
 
 # Recipient(s) of the script.
 # Depending on the #type, this should be an address, a hash160 pubkey,
 # or an array of multisig pubkeys.
 def recipient(*data)
-  @script, @redeem_script = *Script.send("to_#{@type}_script", *data) end end
+ @script, @redeem_script = *Script.send("to_#{@type}_script", *data) end end
 
 # Create a Bitcoin::Protocol::TxOut used by TxBuilder#output.
 #
@@ -382,17 +375,17 @@ def recipient(*data)
 class TxOutBuilder
 attr_reader :txout
 def initialize
-  @txout = P::TxOut.new(0) end
+ @txout = P::TxOut.new(0) end
 
 def value(value) # Set output value (in base units / "satoshis")
-  @txout.value = value end
+ @txout.value = value end
 
 def to(recipient, type = :address) # Set recipient address and script type (defaults to :address).
-  @txout.pk_script, @txout.redeem_script = *Bitcoin::Script.send(
-    "to_#{type}_script", *recipient ) end
+ @txout.pk_script, @txout.redeem_script = *Bitcoin::Script.send(
+   "to_#{type}_script", *recipient ) end
 
 def script # Add a script to the output (see ScriptBuilder).
-  c = ScriptBuilder.new
-  yield c
-  @txout.pk_script = c.script
-  @txout.redeem_script = c.redeem_script end end end end
+ c = ScriptBuilder.new
+ yield c
+ @txout.pk_script = c.script
+ @txout.redeem_script = c.redeem_script end end end end
