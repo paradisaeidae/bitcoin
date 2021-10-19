@@ -1,22 +1,23 @@
 # Bitcoin Utils and Network Protocol in Ruby.
 # Previously a check would adjust Integer class according to Ruby version.
 # Ruby 3 unifies Fixnum and Bignum to Integer.
+# https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/script/script.cpp
 ['digest/sha2', 'digest/rmd160', 'openssl', 'securerandom'].each {| ment | require ment}
 module Bitcoin
-autoload :Connection,   'bitcoin-sv/connection'
-autoload :Protocol,     'bitcoin-sv/protocol'
-autoload :P,            'bitcoin-sv/protocol'
-autoload :Script,       'bitcoin-sv/script'
-autoload :VERSION,      'bitcoin-sv/version'
-autoload :Key,          'bitcoin-sv/key'
-autoload :ExtKey,       'bitcoin-sv/ext_key'
-autoload :ExtPubkey,    'bitcoin-sv/ext_key'
-autoload :Builder,      'bitcoin-sv/builder'
-autoload :BloomFilter,  'bitcoin-sv/bloom_filter'
-autoload :ContractHash, 'bitcoin-sv/contracthash'
+autoload :Connection,   'bitcoin/connection'
+autoload :Protocol,     'bitcoin/protocol'
+autoload :P,            'bitcoin/protocol'
+autoload :Script,       'bitcoin/script'
+autoload :VERSION,      'bitcoin/version'
+autoload :Key,          'bitcoin/key'
+autoload :ExtKey,       'bitcoin/ext_key'
+autoload :ExtPubkey,    'bitcoin/ext_key'
+autoload :Builder,      'bitcoin/builder'
+autoload :BloomFilter,  'bitcoin/bloom_filter'
+autoload :ContractHash, 'bitcoin/contracthash'
 
 module Trezor
-autoload :Mnemonic,   'bitcoin-sv/trezor/mnemonic' end
+autoload :Mnemonic,   'bitcoin/trezor/mnemonic' end
 
 module Util
 def address_version;   Bitcoin.network[:address_version]; end

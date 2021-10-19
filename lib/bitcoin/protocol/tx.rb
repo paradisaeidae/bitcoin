@@ -173,33 +173,6 @@ def signature_hash_for_input(
   ].join
   Digest::SHA256.digest(Digest::SHA256.digest(buf)) end
 
-# generate a witness signature hash for input +input_idx+.
-# https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki
-def signature_hash_for_witness_input(
-  input_idx, witness_program, prev_out_value,
-  witness_script = nil, hash_type = nil, skip_separator_index = 0)
-  # ERROR: SignatureHash() : input_idx=%d out of range
-  return "\x01".ljust(32, "\x00") if input_idx >= @in.size
-  hash_type ||= SIGHASH_TYPE[:all]
-  script = Bitcoin::Script.new(witness_program)
-  raise 'ScriptPubkey does not contain witness program.' unless script.is_witness?
-  if script.is_witness_v0_keyhash?
-    script_code = [['1976a914', script.get_hash160, '88ac'].join].pack('H*')
-  elsif script.is_witness_v0_scripthash?
-    witness_pubkey_script_match = Bitcoin::Script.to_witness_p2sh_script(
-      Digest::SHA256.digest(witness_script).bth
-    ) == witness_program
-    raise 'witness script does not match script pubkey' unless witness_pubkey_script_match
-    script = if skip_separator_index > 0
-       s = Bitcoin::Script.new(witness_script)
-       s.subscript_codeseparator(skip_separator_index)
-     else
-       witness_script
-     end
-    script_code = Bitcoin::Protocol.pack_var_string(script)
-  end
-  signature_hash_for_input_bip143(input_idx, script_code, prev_out_value, hash_type)
-end
 # rubocop:enable Metrics/ParameterLists
 # verify input signature +in_idx+ against the corresponding
 # output in +outpoint_tx+
@@ -208,31 +181,27 @@ end
 # options are: verify_sigpushonly, verify_minimaldata, verify_cleanstack,
 #              verify_dersig, verify_low_s, verify_strictenc, fork_id
 def verify_input_signature(in_idx, outpoint_data, block_timestamp = Time.now.to_i, opts = {})
-  if @enable_bitcoinconsensus
-    return bitcoinconsensus_verify_script(in_idx, outpoint_data, block_timestamp, opts)
-  end
-  # If FORKID is enabled, we also ensure strict encoding.
-  opts[:verify_strictenc] ||= !opts[:fork_id].nil?
-  outpoint_idx  = @in[in_idx].prev_out_index
-  script_sig    = @in[in_idx].script_sig
-  amount = amount_from_outpoint_data(outpoint_data, outpoint_idx)
-  script_pubkey = script_pubkey_from_outpoint_data(outpoint_data, outpoint_idx)
-  if opts[:fork_id] && amount.nil?
-    raise 'verify_input_signature must be called with a previous transaction or ' \
-      'transaction output if SIGHASH_FORKID is enabled'
-  end
-  @scripts[in_idx] = Bitcoin::Script.new(script_sig, script_pubkey)
-  return false if opts[:verify_sigpushonly] && !@scripts[in_idx].is_push_only?(script_sig)
-  return false if opts[:verify_minimaldata] && !@scripts[in_idx].pushes_are_canonical?
-  sig_valid = @scripts[in_idx].run(
-    block_timestamp, opts
-  ) do |pubkey, sig, hash_type, subscript|
-    hash = signature_hash_for_input(in_idx, subscript, hash_type, amount, opts[:fork_id])
-    Bitcoin.verify_signature(hash, sig, pubkey.unpack('H*')[0])
-  end
-  # BIP62 rule #6
-  return false if opts[:verify_cleanstack] && !@scripts[in_idx].stack.empty?
-  sig_valid end
+ if @enable_bitcoinconsensus
+  return bitcoinconsensus_verify_script(in_idx, outpoint_data, block_timestamp, opts) end
+ # If FORKID is enabled, we also ensure strict encoding.
+ opts[:verify_strictenc] ||= !opts[:fork_id].nil?
+ outpoint_idx  = @in[in_idx].prev_out_index
+ script_sig    = @in[in_idx].script_sig
+ amount = amount_from_outpoint_data(outpoint_data, outpoint_idx)
+ script_pubkey = script_pubkey_from_outpoint_data(outpoint_data, outpoint_idx)
+ if opts[:fork_id] && amount.nil?
+  raise 'verify_input_signature must be called with a previous transaction or ' \
+        'transaction output if SIGHASH_FORKID is enabled' end
+ @scripts[in_idx] = Bitcoin::Script.new(script_sig, script_pubkey)
+ return false if opts[:verify_sigpushonly] && !@scripts[in_idx].is_push_only?(script_sig)
+ return false if opts[:verify_minimaldata] && !@scripts[in_idx].pushes_are_canonical?
+ sig_valid = @scripts[in_idx].run( block_timestamp, opts )
+  do |pubkey, sig, hash_type, subscript|
+   hash = signature_hash_for_input(in_idx, subscript, hash_type, amount, opts[:fork_id])
+   Bitcoin.verify_signature(hash, sig, pubkey.unpack('H*')[0]) end
+ # BIP62 rule #6
+ return false if opts[:verify_cleanstack] && !@scripts[in_idx].stack.empty?
+ sig_valid end
 
 def bitcoinconsensus_verify_script(
  in_idx, outpoint_data, block_timestamp = Time.now.to_i, opts = {} )
