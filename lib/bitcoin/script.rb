@@ -2,6 +2,7 @@ require 'bitcoin-sv'
 =begin
 https://github.com/bitcoin-sv-specs
 https://ramonquesada.com/glossary/opcodes-used-in-bitcoin-script/
+https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/script/opcodes.cpp
 
 November 2018 additions:
 Word 	OpCode 	Hex 	Input 	Output 	Description
@@ -331,7 +332,7 @@ def self.pack_pushdata_align(pushdata, len, data)
 
 def self.from_string(input_script, previous_output_script=nil) # script object of a string representation
  if previous_output_script
-   new(binary_from_string(input_script), binary_from_string(previous_output_script))
+  new(binary_from_string(input_script), binary_from_string(previous_output_script))
  else new(binary_from_string(input_script)) end end
 
 class ScriptOpcodeError < StandardError; end
@@ -361,7 +362,7 @@ def self.binary_from_string(script_string) # raw script binary of a string repre
  buf end
 
 def invalid?
-  @script_invalid ||= false end
+ @script_invalid ||= false end
 
 # run the script. +check_callback+ is called for OP_CHECKSIG operations
 def run(block_timestamp=Time.now.to_i, opts={}, &check_callback)
@@ -424,23 +425,8 @@ def self.drop_signatures(script_pubkey, drop_signatures)
  script = new(script_pubkey).to_string.split(" ").delete_if{|c| drop_signatures.include?(c) }.join(" ")
  script_pubkey = binary_from_string(script) end
 
-# pay_to_script_hash: https://en.bitcoin.it/wiki/BIP_0016
-# <sig> {<pub> OP_CHECKSIG} | OP_HASH160 <script_hash> OP_EQUAL
-def pay_to_script_hash(block_timestamp, opts, check_callback)
- return false if @chunks.size < 4
- *rest, script, _, script_hash, _ = @chunks
- script = rest.pop if script == OP_CODESEPARATOR
- script, script_hash = cast_to_string(script), cast_to_string(script_hash)
- return false unless Bitcoin.hash160(script.unpack("H*")[0]) == script_hash.unpack("H*")[0]
- return true  if check_callback == :check
- script = self.class.new(to_binary(rest) + script).inner_p2sh!(script)
- result = script.run(block_timestamp, opts, &check_callback)
- @debug = script.debug
- @stack = script.stack # Set the execution stack to match the redeem script, so checks on stack contents at end of script execution validate correctly
- result end
-
 def is_standard? # check if script is in one of the recognized standard formats
- is_pubkey? || is_hash160? || is_multisig? || is_op_return? || is_witness_v0_keyhash? || is_witness_v0_scripthash? end
+ is_pubkey? || is_hash160? || is_multisig? || is_op_return? end
 
 def is_pubkey? # is this a pubkey script
  return false if @chunks.size != 2
@@ -459,15 +445,6 @@ def is_multisig? # is this a multisig script
 
 def is_op_return? # is this an op_return script
  @chunks[0] == OP_RETURN && @chunks.size <= 2 end
-
-def is_witness? # is this a witness script
- @chunks.length == 2 && (0..16).include?(@chunks[0]) && @chunks[1].is_a?(String) end
-
-def is_witness_v0_keyhash? # is this a witness pubkey script
- is_witness? && @chunks[0] == 0 && @chunks[1].bytesize == 20 end
-
-def is_witness_v0_scripthash? # is this a witness script hash
- is_witness? && @chunks[0] == 0 && @chunks[1].bytesize == 32 end
 
 # Verify the script is only pushing data onto the stack
 def is_push_only?(script_data=nil)
@@ -514,8 +491,6 @@ def type
  elsif is_pubkey?;               :pubkey
  elsif is_multisig?;             :multisig
  elsif is_op_return?;            :op_return
- elsif is_witness_v0_keyhash?;   :witness_v0_keyhash
- elsif is_witness_v0_scripthash?;:witness_v0_scripthash
  else;                           :unknown end end
 
 # get the public key for this pubkey script
@@ -527,12 +502,10 @@ def get_pubkey
 def get_pubkey_address
  Bitcoin.pubkey_to_address(get_pubkey) end
 
-# get the hash160 for this hash160 or pubkey script
+# get the hash160 for this hash160
 def get_hash160
  return @chunks[2..-3][0].unpack("H*")[0]  if is_hash160?
- return Bitcoin.hash160(get_pubkey)        if is_pubkey?
- return @chunks[1].unpack("H*")[0]         if is_witness_v0_keyhash?
- return @chunks[1].unpack("H*")[0]         if is_witness_v0_scripthash? end
+ return Bitcoin.hash160(get_pubkey)        if is_pubkey? end
 
 # get the hash160 address for this hash160 script
 def get_hash160_address
@@ -680,7 +653,7 @@ def codeseparator_count
 
 # This matches CScript::GetSigOpCount(bool fAccurate)
 # Note: this does not cover P2SH script which is to be unserialized
-#       and checked explicitly when validating blocks.
+#  and checked explicitly when validating blocks.
 def sigops_count_accurate(is_accurate)
   count = 0
   last_opcode = nil
@@ -694,27 +667,6 @@ def sigops_count_accurate(is_accurate)
     else count += 20 end end
    last_opcode = chunk end
   count end
-
-# This method applies to script_sig that is an input for p2sh output.
-# Bitcoind has somewhat special way to return count for invalid input scripts:
-# it returns 0 when the opcode can't be parsed or when it's over OP_16.
-# Also, if the OP_{N} is used anywhere it's treated as 0-length data.
-# See CScript::GetSigOpCount(const CScript& scriptSig) in bitcoind.
-def sigops_count_for_p2sh
- # This is a pay-to-script-hash scriptPubKey;
- # get the last item that the scriptSig
- # pushes onto the stack:
- return 0 if @chunks.size == 0
- data = nil
- @chunks.each do |chunk|
-  case chunk
-  when Bitcoin::Integer
-   data = ""
-   return 0 if chunk > OP_16
-  when String
-   data = chunk end end
- return 0 if data == ""
- ::Bitcoin::Script.new(data).sigops_count_accurate(true) end
 
 # Converts OP_{0,1,2,...,16} into 0, 1, 2, ..., 16.
 # Returns nil for other opcodes.
@@ -745,6 +697,12 @@ def op_nop7;  end
 def op_nop8;  end
 def op_nop9;  end
 def op_nop10; end
+def op_nop11;  end
+def op_nop12;  end
+def op_nop13;  end
+def op_nop14;  end
+def op_nop15;  end
+def op_nop16;  end
 
 def op_dup # Duplicates the top stack item.
  @stack << (@stack[-1].dup rescue @stack[-1]) end
