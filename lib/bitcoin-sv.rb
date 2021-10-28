@@ -20,8 +20,11 @@ module Trezor
 autoload :Mnemonic,   'bitcoin/trezor/mnemonic' end
 
 module Util
-def address_version;   Bitcoin.network[:address_version]; end
-def version_bytes;     address_version.size / 2; end
+def address_version
+ Bitcoin.network[:address_version] end
+
+def version_bytes
+ address_version.size / 2 end
 
 # hash160 is a 20 bytes (160bits) rmd610-sha256 hexdigest.
 def hash160(hex)
@@ -32,8 +35,8 @@ def hash160(hex)
 def checksum(hex)
  b = [hex].pack("H*") # unpack hex
  Digest::SHA256.hexdigest( Digest::SHA256.digest(b) )[0...8] end
-# verify base58 checksum for given +base58+ data.
 
+# verify base58 checksum for given +base58+ data.
 def base58_checksum?(base58)
  hex = decode_base58(base58) rescue nil
  return false unless hex
@@ -76,12 +79,19 @@ def address_type(address)
   return :hash160 end end
  nil end
 
-def sha256(hex);                     Digest::SHA256.hexdigest([hex].pack("H*")) end
-def hash160_to_address(hex);         encode_address hex, address_version end
+def sha256(hex)
+ Digest::SHA256.hexdigest([hex].pack("H*")) end
+
+def hash160_to_address(hex)
+ encode_address hex, address_version end
+
 def encode_address(hex, version);
  hex = version + hex
  encode_base58(hex + checksum(hex)) end
-def pubkey_to_address(pubkey);       hash160_to_address( hash160(pubkey) ) end
+
+def pubkey_to_address(pubkey)
+ hash160_to_address( hash160(pubkey) ) end
+
 def pubkeys_to_multisig_address(m, *pubkeys)
  redeem_script = Bitcoin::Script.to_multisig_script(m, *pubkeys).last
  return Bitcoin.hash160_to_address(Bitcoin.hash160(redeem_script.hth)), redeem_script end
@@ -140,7 +150,8 @@ def decode_target(target_bits)
  when String
   [ target_bits.to_i(16), encode_compact_bits(target_bits) ] end end
 
-def bitcoin_elliptic_curve;      ::OpenSSL::PKey::EC.new("secp256k1") end
+def bitcoin_elliptic_curve
+ ::OpenSSL::PKey::EC.new("secp256k1") end
 
 def generate_key
  key = bitcoin_elliptic_curve.generate_key
@@ -156,8 +167,12 @@ def generate_address
 def bitcoin_hash(hex)
  Digest::SHA256.digest( Digest::SHA256.digest( [hex].pack("H*").reverse ) ).reverse.bth end
 
-def bitcoin_byte_hash(bytes);       Digest::SHA256.digest(Digest::SHA256.digest(bytes)) end
-def bitcoin_mrkl(a, b);             bitcoin_hash(b + a); end
+def bitcoin_byte_hash(bytes)
+ Digest::SHA256.digest(Digest::SHA256.digest(bytes)) end
+
+def bitcoin_mrkl(a, b)
+ bitcoin_hash(b + a) end
+
 def block_hash(prev_block, mrkl_root, time, bits, nonce, ver)
  h = "%08x%08x%08x%064s%064s%08x" %
   [nonce, bits, time, mrkl_root, prev_block, ver]
@@ -200,12 +215,10 @@ def sign_data(key, data)
  sig = nil
  loop {
   sig = key.dsa_sign_asn1(data)
-  sig = if Script.is_low_der_signature?(sig)
-   sig
+  sig = if Script.is_low_der_signature?(sig) then sig
    else Bitcoin::OpenSSL_EC.signature_to_low_s(sig) end
   buf = sig + [Script::SIGHASH_TYPE[:all]].pack("C") # is_der_signature expects sig + sighash_type format
-  if Script.is_der_signature?(buf)
-   break
+  if Script.is_der_signature?(buf) then break
   else p ["Bitcoin#sign_data: invalid der signature generated, trying again.", data.unpack("H*")[0], sig.unpack("H*")[0]] end }
   return sig end
 
@@ -222,7 +235,7 @@ def open_key(private_key, public_key=nil)
  key = bitcoin_elliptic_curve
  key.private_key = ::OpenSSL::BN.from_hex(private_key)
  public_key = regenerate_public_key(private_key) unless public_key
- key.public_key  = ::OpenSSL::PKey::EC::Point.from_hex(key.group, public_key)
+ key.public_key = ::OpenSSL::PKey::EC::Point.from_hex(key.group, public_key)
  key end
 
 def regenerate_public_key(private_key)
@@ -260,6 +273,7 @@ def block_difficulty(target_nbits)
  # "%.7f" % (max_target / current_target.to_f)
  bits, max_body, scaland = target_nbits, Math.log(0x00ffff), Math.log(256)
  "%.7f" % Math.exp(max_body - Math.log(bits&0x00ffffff) + scaland * (0x1d - ((bits&0xff000000)>>24))) end
+
 # Calculate new difficulty target. Note this takes in details of the preceeding
 # block, not the current one.
 #
@@ -330,14 +344,23 @@ include Bitcoin::BinaryExtensions end
 
 module ::OpenSSL
 class BN
-def self.from_hex(hex); new(hex, 16); end
-def to_hex; to_i.to_s(16); end
-def to_mpi; to_s(0).unpack("C*"); end end
+def self.from_hex(hex)
+ new(hex, 16) end
+
+def to_hex
+ to_i.to_s(16) end
+
+def to_mpi; to_s(0).unpack("C*") end end
 
 class PKey::EC
-def private_key_hex; private_key.to_hex.rjust(64, '0') end
-def public_key_hex;  public_key.to_hex.rjust(130, '0') end
-def pubkey_compressed?; public_key.group.point_conversion_form == :compressed; end end
+def private_key_hex
+ private_key.to_hex.rjust(64, '0') end
+
+def public_key_hex
+ public_key.to_hex.rjust(130, '0') end
+
+def pubkey_compressed?
+ public_key.group.point_conversion_form == :compressed; end end
 
 class PKey::EC::Point
 def self.from_hex(group, hex); new(group, BN.from_hex(hex)) end
@@ -348,10 +371,12 @@ def ec_add(point); self.class.new(group, OpenSSL::BN.from_hex(OpenSSL_EC.ec_add(
 autoload :OpenSSL_EC, "bitcoin/ffi/openssl"
 autoload :Secp256k1, "bitcoin/ffi/secp256k1"
 autoload :BitcoinConsensus, "bitcoin/ffi/bitcoinconsensus"
-@network = :bitcoin
-def self.network; @network_options ||= NETWORKS[@network].dup end
- # Store the copy of network options so we can modify them in tests without breaking the defaults
+@network = :regtest
 
+def self.network
+ @network_options ||= NETWORKS[@network].dup end
+
+# Store the copy of network options so we can modify them in tests without breaking the defaults
 def self.network_name; @network ||= nil end
 def self.network_project; @network_project ||= nil end
 
@@ -391,8 +416,8 @@ MIN_FEE_MODE     = [ :block, :relay, :send ]
 # https://en.bitcoin.it/wiki/Genesis_block?fbclid=IwAR1YlCeA-zRM2I4SDJ-8gx_5i9n9xgY2HQuzwcwKeQflEvZQxqXLs6YxM7g
 # https://bitcoin.stackexchange.com/questions/75733/why-does-bitcoin-no-longer-have-checkpoints
 NETWORKS = {
- bitcoin: {
-  project: :bitcoin,
+ main: {
+  project: :main,
   magic_head: "\xF9\xBE\xB4\xD9",
   message_magic: "Bitcoin Signed Message:\n",
   address_version: "00",
@@ -414,18 +439,18 @@ NETWORKS = {
   dust: CENT,
   per_dust_fee: false,
   bip34_height: 227931,
-  dns_seeds: [ "seed.bitcoin.sipa.be", "dnsseed.bluematt.me", "dnsseed.bitcoin.dashjr.org", "bitseed.xf2.org", "dnsseed.webbtc.com", ],
+  dns_seeds: [ '???' ],
    genesis_hash: "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
    proof_of_work_limit: 0x1d00ffff,
-   known_nodes: [ 'relay.eligius.st',   'mining.bitcoin.cz',   'blockchain.info',   'blockexplorer.com',   'webbtc.com', ],
+   known_nodes: [ '???' ],
    checkpoints: {}}}
-NETWORKS[:testnet] = NETWORKS[:bitcoin].merge({
+NETWORKS[:testnet] = NETWORKS[:main].merge({
  magic_head: "\xFA\xBF\xB5\xDA",
  address_version: "6f",
  privkey_version: "ef",
  extended_privkey_version: "04358394",
  extended_pubkey_version: "043587cf",
- default_port: 18333,
+ default_port: 18332 ,
  bip34_height: 21111,
  dns_seeds: [ ],
  genesis_hash: "00000007199508e34a9ff81e6ec0c477a4cccff2a4767a8eee39c11db367b008",
@@ -433,16 +458,8 @@ NETWORKS[:testnet] = NETWORKS[:bitcoin].merge({
  known_nodes: [],
  checkpoints: {},  })
 NETWORKS[:regtest] = NETWORKS[:testnet].merge({
- default_port: 18444,
+ known_nodes: ['elsdk'],
+ default_port: 18332 ,
  genesis_hash: "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206",
  proof_of_work_limit: 0x207fffff,
- bip34_height: 0, })
-NETWORKS[:testnet3] = NETWORKS[:regtest].merge({
- magic_head: "\x0B\x11\x09\x07",
- no_difficulty: true, # no good. add right testnet3 difficulty calculation instead
- genesis_hash: "000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943",
- proof_of_work_limit: 0x1d00ffff,
- dns_seeds: ["testnet-seed.alexykot.me", "testnet-seed.bitcoin.schildbach.de", "testnet-seed.bitcoin.petertodd.org",
-  "testnet-seed.bluematt.me", "dnsseed.test.webbtc.com",],
-   known_nodes: ["test.webbtc.com"],
-   checkpoints: {} }) end
+ bip34_height: 0, }) end

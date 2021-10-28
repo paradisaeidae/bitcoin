@@ -1,4 +1,4 @@
-== Thanks to Lian, this is a BSV oriented fork of his repo.
+== This is a BSV oriented fork of Lian's repo.
 == It is in basic refactoring state for this and not yet usable.
 == Removed references to litecoin, dogecoin, namecoin, Bech32
 This is a ruby library for interacting with the bitcoin protocol/network.
