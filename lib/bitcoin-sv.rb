@@ -363,22 +363,31 @@ def pubkey_compressed?
  public_key.group.point_conversion_form == :compressed; end end
 
 class PKey::EC::Point
-def self.from_hex(group, hex); new(group, BN.from_hex(hex)) end
-def to_hex; to_bn.to_hex; end
-def self.bn2mpi(hex) BN.from_hex(hex).to_mpi; end
+def self.from_hex(group, hex)
+ new(group, BN.from_hex(hex)) end
+
+def to_hex
+ to_bn.to_hex end
+
+def self.bn2mpi(hex)
+ BN.from_hex(hex).to_mpi end
+
 def ec_add(point); self.class.new(group, OpenSSL::BN.from_hex(OpenSSL_EC.ec_add(self, point))) end end end
 
 autoload :OpenSSL_EC, "bitcoin/ffi/openssl"
 autoload :Secp256k1, "bitcoin/ffi/secp256k1"
 autoload :BitcoinConsensus, "bitcoin/ffi/bitcoinconsensus"
-@network = :regtest
+@network = []
 
 def self.network
  @network_options ||= NETWORKS[@network].dup end
 
 # Store the copy of network options so we can modify them in tests without breaking the defaults
-def self.network_name; @network ||= nil end
-def self.network_project; @network_project ||= nil end
+def self.network_name
+ @network ||= nil end
+
+def self.network_project
+ @network_project ||= nil end
 
 def self.network=(name)
  raise "Network descriptor '#{name}' not found." unless NETWORKS[name.to_sym]
@@ -387,7 +396,7 @@ def self.network=(name)
  @network_project = network[:project] rescue nil
  @network end
 
-[:bitcoin, :bitcoin_testnet].each do |n| instance_eval "def #{n}?; network_project == :#{n}; end" end
+[:main, :stn, :testnet, :regtest].each do |n| instance_eval "def #{n}?; network_project == :#{n}; end" end
 # maximum size of a block (in bytes)
 MAX_BLOCK_SIZE = 1_000_000
 # soft limit for new blocks
@@ -415,51 +424,73 @@ MIN_FEE_MODE     = [ :block, :relay, :send ]
 # https://github.com/bitcoin/bips/blob/master/bip-0034.mediawiki
 # https://en.bitcoin.it/wiki/Genesis_block?fbclid=IwAR1YlCeA-zRM2I4SDJ-8gx_5i9n9xgY2HQuzwcwKeQflEvZQxqXLs6YxM7g
 # https://bitcoin.stackexchange.com/questions/75733/why-does-bitcoin-no-longer-have-checkpoints
-NETWORKS = {
- main: {
-  project: :main,
-  magic_head: "\xF9\xBE\xB4\xD9",
-  message_magic: "Bitcoin Signed Message:\n",
-  address_version: "00",
-  privkey_version: "80",
-  extended_privkey_version: "0488ade4",
-  extended_pubkey_version: "0488b21e",
-  default_port: 8333,
-  protocol_version: 70001,
-  coinbase_maturity: 100,
-  reward_base: 50 * COIN,
-  reward_halving: 210_000,
-  retarget_interval: 2016,
-  retarget_time: 1209600, # 2 weeks
-  target_spacing: 600, # block interval
-  max_money: 21_000_000 * COIN,
-  min_tx_fee: 10_000,
-  min_relay_tx_fee: 10_000,
-  free_tx_bytes: 1_000,
-  dust: CENT,
-  per_dust_fee: false,
-  bip34_height: 227931,
-  dns_seeds: [ '???' ],
-   genesis_hash: "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
-   proof_of_work_limit: 0x1d00ffff,
-   known_nodes: [ '???' ],
-   checkpoints: {}}}
-NETWORKS[:testnet] = NETWORKS[:main].merge({
+# Removed, not used:  bip34_height
+
+NETWORKS = {}
+NETWORKS[:main] = {
+ project: :main,
+ magic_head: "\xF9\xBE\xB4\xD9",  # 0xF9BEB4D9
+ message_magic: "Bitcoin Signed Message:\n",
+ address_version: "00",
+ privkey_version: "80",
+ extended_privkey_version: "0488ade4",
+ extended_pubkey_version: "0488b21e",
+ default_port: 8333,
+ protocol_version: 70001,
+ coinbase_maturity: 100,
+ reward_base: 50 * COIN,
+ reward_halving: 210_000,
+ retarget_interval: 2016,
+ retarget_time: 1209600, # 2 weeks
+ target_spacing: 600, # block interval
+ max_money: 21_000_000 * COIN,
+ min_tx_fee: 10_000,
+ min_relay_tx_fee: 10_000,
+ free_tx_bytes: 1_000,
+ dust: CENT,
+ per_dust_fee: false,
+ dns_seeds: [ '???' ],
+ genesis_hash: "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+ proof_of_work_limit: 0x1d00ffff,
+ known_nodes: [ '???' ],
+ checkpoints: {}}
+NETWORKS[:testnet] = {
+ project: :testnet,
+ known_nodes: [ '????' ],
+ default_port: 18332 ,
  magic_head: "\xFA\xBF\xB5\xDA",
  address_version: "6f",
  privkey_version: "ef",
  extended_privkey_version: "04358394",
  extended_pubkey_version: "043587cf",
- default_port: 18332 ,
- bip34_height: 21111,
  dns_seeds: [ ],
  genesis_hash: "00000007199508e34a9ff81e6ec0c477a4cccff2a4767a8eee39c11db367b008",
  proof_of_work_limit: 0x1d07fff8,
- known_nodes: [],
- checkpoints: {},  })
-NETWORKS[:regtest] = NETWORKS[:testnet].merge({
+ checkpoints: {},  }
+NETWORKS[:regtest] = {
+ project: :regtest,
  known_nodes: ['elsdk'],
  default_port: 18332 ,
  genesis_hash: "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206",
+ magic_head: "\xFA\xBF\xB5\xDA", # 0x0B110907 on BCH
+ address_version: "6f",
+ privkey_version: "ef",
+ extended_privkey_version: "04358394",
+ extended_pubkey_version: "043587cf",
+ coinbase_maturity: 100,
+ reward_base: 50 * COIN,
+ reward_halving: 210_000,
+ retarget_interval: 2016,
+ retarget_time: 1209600, # 2 weeks
+ target_spacing: 600, # block interval
+ max_money: 21_000_000 * COIN,
+ min_tx_fee: 10_000,
+ min_relay_tx_fee: 10_000,
+ free_tx_bytes: 1_000,
+ dust: CENT,
+ per_dust_fee: false,
  proof_of_work_limit: 0x207fffff,
- bip34_height: 0, }) end
+ dns_seeds: [ ],
+ genesis_hash: "00000007199508e34a9ff81e6ec0c477a4cccff2a4767a8eee39c11db367b008",
+ proof_of_work_limit: 0x1d07fff8,
+ checkpoints: {},  } end

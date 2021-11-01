@@ -4,7 +4,7 @@ puts require_relative '../lib/bitcoin-sv'
 include Bitcoin
 include Bitcoin::Util
 
-Bitcoin.network = ARGV.shift || :bitcoin
+Bitcoin.network = ARGV.shift || :regtest
 
 require 'irb'
 require 'irb/completion'
