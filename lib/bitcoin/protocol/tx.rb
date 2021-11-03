@@ -1,7 +1,7 @@
 require_relative '../script'
 module Bitcoin
 module Protocol
-# https://en.bitcoin.it/wiki/Protocol_documentation#tx
+# https://en.bitcoin.it/wiki/Protocol_documentation#tx Ignore the segwits.
 class Tx
 MARKER = 0
 FLAG = 1
@@ -71,16 +71,14 @@ def parse_data_from_io(data)
   in_size = Protocol.unpack_var_int_from_io(buf)
   @in = []
   in_size.times do
-    break if buf.eof?
-    @in << TxIn.from_io(buf)
-  end
+   break if buf.eof?
+   @in << TxIn.from_io(buf) end
   return false if buf.eof?
   out_size = Protocol.unpack_var_int_from_io(buf)
   @out = []
   out_size.times do
-    break if buf.eof?
-    @out << TxOut.from_io(buf)
-  end
+   break if buf.eof?
+   @out << TxOut.from_io(buf) end
   return false if buf.eof?
   if witness
    in_size.times do |i|
@@ -137,11 +135,9 @@ def signature_hash_for_input(
   # ERROR: SignatureHash() : input_idx=%d out of range
   return "\x01".ljust(32, "\x00") if input_idx >= @in.size
   pin = @in.map.with_index do |input, idx|
-   if idx == input_idx
-    # legacy api (outpoint_tx)
+   if idx == input_idx    # legacy api (outpoint_tx)
     subscript = subscript.out[input.prev_out_index].script if subscript.respond_to?(:out)
-    # Remove all instances of OP_CODESEPARATOR from the script.
-    parsed_subscript = Script.new(subscript)
+    parsed_subscript = Script.new(subscript) # Remove all instances of OP_CODESEPARATOR from the script.
     parsed_subscript.chunks.delete(Script::OP_CODESEPARATOR)
     subscript = parsed_subscript.to_binary
     input.to_payload(subscript)
@@ -149,7 +145,8 @@ def signature_hash_for_input(
     case (hash_type & 0x1f)
     when SIGHASH_TYPE[:none] then   input.to_payload('', "\x00\x00\x00\x00")
     when SIGHASH_TYPE[:single] then input.to_payload('', "\x00\x00\x00\x00")
-    else; input.to_payload('') end end end
+    else
+     input.to_payload('') end end end
   pout = @out.map(&:to_payload)
   in_size = Protocol.pack_var_int(@in.size)
   out_size = Protocol.pack_var_int(@out.size)
@@ -161,16 +158,14 @@ def signature_hash_for_input(
    # ERROR: SignatureHash() : input_idx=%d out of range (SIGHASH_SINGLE)
    return "\x01".ljust(32, "\x00") if input_idx >= @out.size
    pout = @out[0...(input_idx + 1)].map.with_index do |out, idx|
-     idx == input_idx ? out.to_payload : out.to_null_payload
-   end.join
+    idx == input_idx ? out.to_payload : out.to_null_payload end.join
    out_size = Protocol.pack_var_int(input_idx + 1) end
   if (hash_type & SIGHASH_TYPE[:anyonecanpay]) != 0
    in_size = Protocol.pack_var_int(1)
    pin = [pin[input_idx]] end
   buf = [
    [@ver].pack('V'), in_size, pin, out_size,
-   pout, [@lock_time, hash_type].pack('VV')
-  ].join
+   pout, [@lock_time, hash_type].pack('VV') ].join
   Digest::SHA256.digest(Digest::SHA256.digest(buf)) end
 
 # rubocop:enable Metrics/ParameterLists
@@ -276,8 +271,7 @@ def is_final?(block_height, block_time) # rubocop:disable Naming/PredicateName
 # Checks if transaction is final taking into account height and time
 # of a block in which it is located (or about to be included if it's unconfirmed tx).
 def final?(block_height, block_time)
- # No time lock - tx is final.
- return true if lock_time.zero?
+ return true if lock_time.zero?  # No time lock - tx is final.
  # Time based nLockTime implemented in 0.1.6
  # If lock_time is below the magic threshold treat it as a block height.
  # If lock_time is above the threshold, it's a unix timestamp.
@@ -345,18 +339,16 @@ def coinbase?
 
 def normalized_hash
  signature_hash_for_input(-1, nil, SIGHASH_TYPE[:all]).reverse.hth end
+
 alias nhash normalized_hash
-# get witness hash
-def witness_hash
- hash_from_payload(to_witness_payload) end
 
 # sort transaction inputs and outputs under BIP 69
-# https://github.com/bitcoin/bips/blob/master/bip-0069.mediawiki
+# https://github.com/bitcoin/bips/blob/master/bip-0069.mediawiki This is interesting.
 def lexicographical_sort!
  inputs.sort_by! { |i| [i.previous_output, i.prev_out_index] }
  outputs.sort_by! { |o| [o.amount, o.pk_script.bth] } end
-private
 
+private
 def signature_hash_for_input_bip143(input_idx, script_code, prev_out_value, hash_type)
  hash_prevouts = Digest::SHA256.digest( Digest::SHA256.digest(
   @in.map { |i| [i.prev_out_hash, i.prev_out_index].pack('a32V') }.join ) )
@@ -380,13 +372,12 @@ def signature_hash_for_input_bip143(input_idx, script_code, prev_out_value, hash
  Digest::SHA256.digest(Digest::SHA256.digest(buf)) end
 
 def script_pubkey_from_outpoint_data(outpoint_data, outpoint_idx)
-  if outpoint_data.respond_to?(:out)  # If given an entire previous transaction, take the script from it
-    outpoint_data.out[outpoint_idx].pk_script
-  elsif outpoint_data.respond_to?(:pk_script) # If given an transaction output, take the script
-    outpoint_data.pk_script
-  else outpoint_data end end # Otherwise, we assume it's already a script.
-   
-   
+ if outpoint_data.respond_to?(:out)  # If given an entire previous transaction, take the script from it
+   outpoint_data.out[outpoint_idx].pk_script
+ elsif outpoint_data.respond_to?(:pk_script) # If given an transaction output, take the script
+   outpoint_data.pk_script
+ else outpoint_data end end # Otherwise, we assume it's already a script.
+
 def amount_from_outpoint_data(outpoint_data, outpoint_idx)
  if outpoint_data.respond_to?(:out)
   # If given an entire previous transaction, take the amount from the

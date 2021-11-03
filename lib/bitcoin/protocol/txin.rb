@@ -20,6 +20,7 @@ attr_accessor :sequence # sequence
 DEFAULT_SEQUENCE = "\xff\xff\xff\xff".freeze
 NULL_HASH = "\x00" * 32
 COINBASE_INDEX = 0xffffffff
+
 def initialize(*args)
  @prev_out_hash, @prev_out_index, @script_sig_length,
  @script_sig, @sequence = *args
@@ -30,8 +31,8 @@ def initialize(*args)
 def ==(other) # compare to another txout
  @prev_out_hash == other.prev_out_hash &&
   @prev_out_index == other.prev_out_index &&
-  @script_sig == other.script_sig &&
-  @sequence == other.sequence
+   @script_sig == other.script_sig &&
+    @sequence == other.sequence
  rescue StandardError
   false end
 
@@ -63,13 +64,12 @@ def parsed_script
 
 def to_payload(script = @script_sig, sequence = @sequence)
  [@prev_out_hash, @prev_out_index].pack('a32V') << Protocol.pack_var_int(script.bytesize) \
-                                                 << script << (sequence || DEFAULT_SEQUENCE) end
+                                                << script << (sequence || DEFAULT_SEQUENCE) end
 
 def to_hash(_options = {})
  t = { 'prev_out' => { 'hash' => @prev_out_hash.reverse_hth, 'n' => @prev_out_index } }
  if coinbase? then t['coinbase']  = @script_sig.unpack('H*')[0]
- else # coinbase tx
-  t['scriptSig'] = Bitcoin::Script.new(@script_sig).to_string end
+ else t['scriptSig'] = Bitcoin::Script.new(@script_sig).to_string end # coinbase tx
  t['sequence'] = @sequence.unpack('V')[0] unless @sequence == "\xff\xff\xff\xff"
  t end
 
@@ -78,9 +78,9 @@ def self.from_hash(input)
  previous_output_index = input['output_index'] || input['prev_out']['n']
  txin = TxIn.new([previous_hash].pack('H*').reverse, previous_output_index)
  txin.script_sig = if input['coinbase']
-                     [input['coinbase']].pack('H*')
+                    [input['coinbase']].pack('H*')
                    else
-                     Script.binary_from_string(input['scriptSig'] || input['script']) end
+                    Script.binary_from_string(input['scriptSig'] || input['script']) end
  txin.sequence = [input['sequence'] || 0xffffffff].pack('V')
  txin end
 

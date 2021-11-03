@@ -138,10 +138,10 @@ OP_2DUP = 110
 OP_3DUP = 111
 OP_NIP = 119
 OP_CAT = 126
-# DEPR OP_SUBSTR = 127
+OP_SUBSTR = 127 # DEPR
 OP_SPLIT = 127
-# DEPR OP_LEFT = 128
-# DEPR OP_RIGHT = 129
+OP_LEFT = 128 # DEPR
+OP_RIGHT = 129 # DEPR
 OP_INVERT = 131
 OP_AND = 132
 OP_OR = 133
@@ -168,8 +168,8 @@ DISABLED_OPCODES = [
  OP_DIV, OP_MOD ] #  OP_MUL, OP_LSHIFT, OP_RSHIFT, and OP_INVERT Restored
 OP_2_16 = (82..96).to_a
 OPCODES_PARSE_BINARY = {}
-OPCODES.each{|k,v| OPCODES_PARSE_BINARY[k] = v }
-OP_2_16.each{|i|   OPCODES_PARSE_BINARY[i] = (OP_2_16.index(i)+2).to_s }
+OPCODES.each{|k,v|       OPCODES_PARSE_BINARY[k] = v }
+OP_2_16.each{|i|         OPCODES_PARSE_BINARY[i] = (OP_2_16.index(i)+2).to_s }
 OPCODES_PARSE_STRING = {}
 OPCODES.each{|k,v|       OPCODES_PARSE_STRING[v] = k }
 OPCODES_ALIAS.each{|k,v| OPCODES_PARSE_STRING[k] = v }
@@ -201,8 +201,7 @@ These opcodes are: OP_MUL, OP_LSHIFT, OP_RSHIFT, and OP_INVERT.
 Additionally, Bitcoin SV will remove the limit of 201 opcodes per individual script.
 =end
 
-## OPCODES
-# Does nothing
+## OPCODES Does nothing
 def op_nop;   end
 def op_nop1;  end
 def op_nop2;  end
@@ -526,5 +525,4 @@ OPCODES_METHOD = Hash[*instance_methods.grep(/^op_/).map{|m|
  [ (OPCODES.find{|k,v| v == m.to_s.upcase }.first rescue nil), m ]
   }.flatten]
 OPCODES_METHOD[0]  = :op_0
-OPCODES_METHOD[81] = :op_1
- end
+OPCODES_METHOD[81] = :op_1 end

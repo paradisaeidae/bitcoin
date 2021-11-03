@@ -215,8 +215,7 @@ def sign_data(key, data)
  sig = nil
  loop {
   sig = key.dsa_sign_asn1(data)
-  sig = if Script.is_low_der_signature?(sig) then sig
-   else Bitcoin::OpenSSL_EC.signature_to_low_s(sig) end
+  sig = if Script.is_low_der_signature?(sig) then sig else Bitcoin::OpenSSL_EC.signature_to_low_s(sig) end
   buf = sig + [Script::SIGHASH_TYPE[:all]].pack("C") # is_der_signature expects sig + sighash_type format
   if Script.is_der_signature?(buf) then break
   else p ["Bitcoin#sign_data: invalid der signature generated, trying again.", data.unpack("H*")[0], sig.unpack("H*")[0]] end }
