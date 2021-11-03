@@ -1,5 +1,4 @@
-$:.unshift( File.expand_path("../../lib", __FILE__) )
-require 'bitcoin'
+require_relative '../../lib/bitcoin-sv'
 
 # p Bitcoin.generate_address # returns address, privkey, pubkey, hash160
 
@@ -8,11 +7,10 @@ prev_tx_output_index = 0
 value = prev_tx.outputs[prev_tx_output_index].value
 #value = 1337 # maybe change the value (eg subtract for fees)
 
-
 tx = Bitcoin::Protocol::Tx.new
 tx.add_in Bitcoin::Protocol::TxIn.new(prev_tx.binary_hash, prev_tx_output_index, 0)
 
-tx.add_out Bitcoin::Protocol::TxOut.value_to_address(value, "1MiQ3zD3hzZBZ4cUDfPd8Eqnjcedkwt5jy") # <- dest address (our donation address)
+tx.add_out Bitcoin::Protocol::TxOut.value_to_address(value, "1MiQ3zD3hzZBZ4cUDfPd8Eqnjcedkwt5jy") # <- dest address
 
 # if all in and outputs are defined, start signing inputs.
 key = Bitcoin.open_key("9b2f08ebc186d435ffc1d10f3627f05ce4b983b72c76b0aee4fcce99e57b0342") # <- privkey

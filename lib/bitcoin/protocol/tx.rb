@@ -190,8 +190,7 @@ def verify_input_signature(in_idx, outpoint_data, block_timestamp = Time.now.to_
  @scripts[in_idx] = Bitcoin::Script.new(script_sig, script_pubkey)
  return false if opts[:verify_sigpushonly] && !@scripts[in_idx].is_push_only?(script_sig)
  return false if opts[:verify_minimaldata] && !@scripts[in_idx].pushes_are_canonical?
- sig_valid = @scripts[in_idx].run( block_timestamp, opts )
-  do |pubkey, sig, hash_type, subscript|
+ sig_valid = @scripts[in_idx].run( block_timestamp, opts ) do | pubkey, sig, hash_type, subscript |
    hash = signature_hash_for_input(in_idx, subscript, hash_type, amount, opts[:fork_id])
    Bitcoin.verify_signature(hash, sig, pubkey.unpack('H*')[0]) end
  # BIP62 rule #6
