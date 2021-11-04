@@ -233,8 +233,8 @@ def self.from_hash(h, do_raise = true) # parse ruby hash (see also #to_hash)
  tx = new(nil)
  tx.ver = (h['ver'] || h['version'])
  tx.lock_time = h['lock_time']
- ins  = h['in']  || h['inputs']
- outs = h['out'] || h['outputs']
+ ins  = h['vin']  || h['inputs']
+ outs = h['vout'] || h['outputs']
  ins.each { |input| tx.add_in(TxIn.from_hash(input)) }
  outs.each { |output| tx.add_out TxOut.from_hash(output) }
  tx.instance_eval do
