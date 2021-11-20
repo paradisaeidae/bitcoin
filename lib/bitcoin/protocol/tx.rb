@@ -2,28 +2,17 @@ require_relative '../script'
 module Bitcoin
 module Protocol
 # https://en.bitcoin.it/wiki/Protocol_documentation#tx Ignore the segwits.
+# https://github.com/bitcoin-sv-specs/protocol/pull/16/commits/a28bd53735bb4e14ff5db4acd4ebdb5b20a1df75
+# https://duckduckgo.com/?q=P2SH+Script+BSV&t=ffcm&ia=web https://coingeek.com/what-is-p2sh-and-why-must-it-go/
+# https://ruby-doc.org/core-3.0.2/Array.html#method-i-pack
 class Tx
 MARKER = 0
 FLAG = 1
 SIGHASH_TYPE = Script::SIGHASH_TYPE
-# transaction hash
-attr_reader :hash
-# inputs (Array of TxIn)
-attr_reader :in
-# outputs (Array of TxOut)
-attr_reader :out
-# raw protocol payload
-attr_reader :payload
-# version (usually 1)
-attr_accessor :ver
-# lock time
-attr_accessor :lock_time
-# parsed / evaluated input scripts cached for later use
-attr_reader :scripts
-attr_accessor :marker
-attr_accessor :flag
-alias inputs  in
-alias outputs out
+# transaction hash, inputs (Array of TxIn), outputs (Array of TxOut), raw protocol payload
+attr_reader :hash, :inputs, :outputs, :payload, :scripts # parsed / evaluated input scripts cached for later use
+# version (usually 1), lock time
+attr_accessor :ver, :locktime, :marker, :flag
 
 def ==(other) # compare to another tx
  @hash == other.hash end
@@ -33,155 +22,121 @@ def binary_hash # return the tx hash in binary format
 
 def initialize(data = nil) # create tx from raw binary +data+
  @ver = 1
- @lock_time = 0
- @in = []
- @out = []
- @scripts = []
+ @locktime = 0
+ @inputs, @outputs, @scripts = [], [], []
  @enable_bitcoinconsensus = !ENV['USE_BITCOINCONSENSUS'].nil?
  parse_data_from_io(data) if data end
 
 def hash_from_payload(payload) # generate the tx hash for given +payload+ in hex format
  Digest::SHA256.digest(Digest::SHA256.digest(payload)).reverse_hth end
 
-alias generate_hash hash_from_payload
-# refresh_hash recalculates the tx hash and sets it on the instance
-def refresh_hash
- @hash = generate_hash(to_old_payload) end
+def refresh_hash # refresh_hash recalculates the tx hash and sets it on the instance
+ @hash = hash_from_payload(to_payload) end
 
 def add_in(input) # add an input
- (@in ||= []) << input end
+ (@inputs ||= []) << input end
 
 def add_out(output) # add an output
- (@out ||= []) << output end
+ (@outputs ||= []) << output end
 
-# parse raw binary data
-# rubocop:disable CyclomaticComplexity,PerceivedComplexity
-def parse_data_from_io(data)
+def parse_data_from_io(data) # parse raw binary data
   buf = data.is_a?(String) ? StringIO.new(data) : data
   @ver = buf.read(4).unpack('V')[0]
   return false if buf.eof?
-  # segwit serialization format is defined by https://github.com/bitcoin/bips/blob/master/bip-0144.mediawiki
-  # Also note that it is impossible to parse 0 input transactions. Regular transactions
-  # with 0 inputs look like malformed segwit transactions.
+  # It is possible to parse 0 input transactions. Regular transactions with 0 inputs are coinbase
   @marker = buf.read(1).unpack('c').first
   @flag = buf.read(1).unpack('c').first
-  witness = @marker.zero? && !@flag.zero?
-  # Non-segwit format does not contain marker or flag fields.
-  buf.seek(buf.pos - 2) unless witness
+  buf.seek(buf.pos - 2)
   in_size = Protocol.unpack_var_int_from_io(buf)
-  @in = []
+  @inputs = []
   in_size.times do
    break if buf.eof?
-   @in << TxIn.from_io(buf) end
+   @inputs << TxIn.from_io(buf) end
   return false if buf.eof?
   out_size = Protocol.unpack_var_int_from_io(buf)
-  @out = []
+  @outputs = []
   out_size.times do
    break if buf.eof?
-   @out << TxOut.from_io(buf) end
+   @outputs << TxOut.from_io(buf) end
   return false if buf.eof?
-  if witness
-   in_size.times do |i|
-    witness_count = Protocol.unpack_var_int_from_io(buf)
-    witness_count.times do
-     size = Protocol.unpack_var_int_from_io(buf)
-     @in[i].script_witness.stack << buf.read(size) end end end
-  @lock_time = buf.read(4).unpack('V')[0]
-  @hash = hash_from_payload(to_old_payload)
+  @locktime = buf.read(4).unpack('V')[0]
+  @hash = hash_from_payload(to_payload)
   @payload = to_payload
   if buf.eof? then true
   else data.is_a?(StringIO) ? buf : buf.read end end
 
 alias parse_data parse_data_from_io
 
-def to_payload
- pin = ''
- @in.each { |input| pin << input.to_payload }
- pout = ''
- @out.each { |output| pout << output.to_payload }
- [@ver].pack('V') << Protocol.pack_var_int(@in.size) \
-  << pin << Protocol.pack_var_int(@out.size) << pout << [@lock_time].pack('V') end
+def to_payload # was to_old_payload due to witness 'protection'! https://github.com/lian/bitcoin-ruby/blob/f9b817c946b3ef99c7652c318c155200aadc6489/lib/bitcoin/protocol/tx.rb#L152
+ pins, pouts = '', ''
+ @inputs.each  { |input |
+  pins  << input.to_payload  }
+ @outputs.each { |output|
+  pouts << output.to_payload }
+
+ [@ver].pack('V') << Protocol.pack_var_int(@inputs.size) \
+  << pins << Protocol.pack_var_int(@outputs.size) << pouts << [@locktime].pack('V') end
 
 # generate a signature hash for input +input_idx+.
 # either pass the +outpoint_tx+ or the +script_pubkey+ directly.
-def signature_hash_for_input(
-  input_idx, subscript, hash_type = nil, prev_out_value = nil, fork_id = nil)
+def signature_hash_for_input( input_idx, subscript, hash_type = nil, prev_out_value = nil, fork_id = nil)
   # https://github.com/bitcoin-sv/bitcoin-sv/blob/e071a3f6c06f41068ad17134189a4ac3073ef76b/script.cpp#L834
   # http://code.google.com/p/bitcoinj/source/browse/trunk/src/com/google/bitcoin/core/Script.java#318
   # https://en.bitcoin.it/wiki/OP_CHECKSIG#How_it_works
   # https://github.com/bitcoin-sv/bitcoin-sv/blob/c2e8c8acd8ae0c94c70b59f55169841ad195bb99/src/script.cpp#L1058
   # https://en.bitcoin.it/wiki/OP_CHECKSIG
-  hash_type ||= SIGHASH_TYPE[:all]
-  # fork_id is optional and if set, SIGHASH_FORKID flag as defined by the
-  # Bitcoin Cash protocol will be respected.
-  #
+
+  # https://wiki.bitcoinsv.io/index.php/SIGHASH_flags
+  # NOTE: Currently all BitcoinSV transactions require an additional SIGHASH flag called SIGHASH_FORKID which is 0x40
+  # A SIGHASH flag is used to indicate which part of the transaction is signed by the ECDSA signature. 
   # https://github.com/Bitcoin-ABC/bitcoin-abc/blob/master/doc/abc/replay-protected-sighash.md
-  if fork_id && (hash_type & SIGHASH_TYPE[:forkid]) != 0
-   raise 'SIGHASH_FORKID is enabled, so prev_out_value is required' if prev_out_value.nil?
-   # According to the spec, we should modify the sighash by replacing the 24 most significant
-   # bits with the fork ID. However, Bitcoin ABC does not currently implement this since the
-   # fork_id is an implicit 0 and it would make the sighash JSON tests fail. Will leave as a
-   # TODO for now.
-   raise NotImplementedError, 'fork_id must be 0' unless fork_id.zero?
-   script_code = Bitcoin::Protocol.pack_var_string(subscript)
-   return signature_hash_for_input_bip143(input_idx, script_code, prev_out_value, hash_type) end
-  # Note: BitcoinQT checks if input_idx >= @in.size and returns 1 with an error message.
-  # But this check is never actually useful because BitcoinQT would crash right before
-  # VerifyScript if input index is out of bounds (inside CScriptCheck::operator()()).
-  # That's why we don't need to do such a check here.
-  #
-  # However, if you look at the case SIGHASH_TYPE[:single] below, we must return 1
-  # because it's possible to have more inputs than outputs and BitcoinQT returns 1 as well.
-  # ERROR: SignatureHash() : input_idx=%d out of range
-  return "\x01".ljust(32, "\x00") if input_idx >= @in.size
-  pin = @in.map.with_index do |input, idx|
+  hash_type ||= SIGHASH_TYPE[:all]
+  raise 'SIGHASH_FORKID is required by BSV.' unless (hash_type & SIGHASH_TYPE[:forkid])
+
+  return "\x01".ljust(32, "\x00") if input_idx >= @inputs.size
+  pin = @inputs.map.with_index do | input, idx |
    if idx == input_idx    # legacy api (outpoint_tx)
     subscript = subscript.out[input.prev_out_index].script if subscript.respond_to?(:out)
-    parsed_subscript = Script.new(subscript) # Remove all instances of OP_CODESEPARATOR from the script.
-    parsed_subscript.chunks.delete(Script::OP_CODESEPARATOR)
+    parsed_subscript = Script.new(subscript)
+    parsed_subscript.chunks.delete(Script::OP_CODESEPARATOR) # Remove all instances of OP_CODESEPARATOR from the script.
     subscript = parsed_subscript.to_binary
     input.to_payload(subscript)
    else
     case (hash_type & 0x1f)
-    when SIGHASH_TYPE[:none] then   input.to_payload('', "\x00\x00\x00\x00")
+    when SIGHASH_TYPE[:none]   then input.to_payload('', "\x00\x00\x00\x00")
     when SIGHASH_TYPE[:single] then input.to_payload('', "\x00\x00\x00\x00")
-    else
-     input.to_payload('') end end end
-  pout = @out.map(&:to_payload)
-  in_size = Protocol.pack_var_int(@in.size)
-  out_size = Protocol.pack_var_int(@out.size)
+    else input.to_payload('') end end end
+  pout = @outputs.map( &:to_payload )
+  in_size =  Protocol.pack_var_int(@inputs.size)
+  out_size = Protocol.pack_var_int(@outputs.size)
+
   case (hash_type & 0x1f)
   when SIGHASH_TYPE[:none]
    pout = ''
    out_size = Protocol.pack_var_int(0)
   when SIGHASH_TYPE[:single]
-   # ERROR: SignatureHash() : input_idx=%d out of range (SIGHASH_SINGLE)
-   return "\x01".ljust(32, "\x00") if input_idx >= @out.size
-   pout = @out[0...(input_idx + 1)].map.with_index do |out, idx|
+   return "\x01".ljust(32, "\x00") if input_idx >= @outputs.size # ERROR: SignatureHash() : input_idx=%d out of range (SIGHASH_SINGLE)
+   pout = @outputs[0...(input_idx + 1)].map.with_index do |out, idx|
     idx == input_idx ? out.to_payload : out.to_null_payload end.join
    out_size = Protocol.pack_var_int(input_idx + 1) end
+
   if (hash_type & SIGHASH_TYPE[:anyonecanpay]) != 0
    in_size = Protocol.pack_var_int(1)
    pin = [pin[input_idx]] end
-  buf = [
-   [@ver].pack('V'), in_size, pin, out_size,
-   pout, [@lock_time, hash_type].pack('VV') ].join
-  Digest::SHA256.digest(Digest::SHA256.digest(buf)) end
+  buff = [ [@ver].pack('V'), in_size, pin, out_size, pout, [@locktime, hash_type].pack('VV') ].join # 32-bit unsigned, VAX (little-endian) byte order
+  Digest::SHA256.digest(Digest::SHA256.digest(buff)) end
 
-# rubocop:enable Metrics/ParameterLists
-# verify input signature +in_idx+ against the corresponding
-# output in +outpoint_tx+
-# outpoint. This arg can also be a Script or TxOut.
-#
+# verify input signature +in_idx+ against the corresponding output in +outpoint_tx+ outpoint.
+# This arg can also be a Script or TxOut.
 # options are: verify_sigpushonly, verify_minimaldata, verify_cleanstack,
 #              verify_dersig, verify_low_s, verify_strictenc, fork_id
-def verify_input_signature(in_idx, outpoint_data, block_timestamp = Time.now.to_i, opts = {})
+def verify_input_signature(in_idx, outpoint_data, blocktimestamp = Time.now.to_i, opts = {})
  if @enable_bitcoinconsensus
-  return bitcoinconsensus_verify_script(in_idx, outpoint_data, block_timestamp, opts) end
+  return bitcoinconsensus_verify_script(in_idx, outpoint_data, blocktimestamp, opts) end
  # If FORKID is enabled, we also ensure strict encoding.
  opts[:verify_strictenc] ||= !opts[:fork_id].nil?
- outpoint_idx  = @in[in_idx].prev_out_index
- script_sig    = @in[in_idx].script_sig
+ outpoint_idx  = @inputs[in_idx].prev_out_index
+ script_sig    = @inputs[in_idx].script_sig
  amount = amount_from_outpoint_data(outpoint_data, outpoint_idx)
  script_pubkey = script_pubkey_from_outpoint_data(outpoint_data, outpoint_idx)
  if opts[:fork_id] && amount.nil?
@@ -190,21 +145,20 @@ def verify_input_signature(in_idx, outpoint_data, block_timestamp = Time.now.to_
  @scripts[in_idx] = Bitcoin::Script.new(script_sig, script_pubkey)
  return false if opts[:verify_sigpushonly] && !@scripts[in_idx].is_push_only?(script_sig)
  return false if opts[:verify_minimaldata] && !@scripts[in_idx].pushes_are_canonical?
- sig_valid = @scripts[in_idx].run( block_timestamp, opts ) do | pubkey, sig, hash_type, subscript |
+ sig_valid = @scripts[in_idx].run( blocktimestamp, opts ) do | pubkey, sig, hash_type, subscript |
    hash = signature_hash_for_input(in_idx, subscript, hash_type, amount, opts[:fork_id])
-   Bitcoin.verify_signature(hash, sig, pubkey.unpack('H*')[0]) end
+   Bitcoin.verify_signature( hash, sig, pubkey.unpack('H*')[0]) end
  # BIP62 rule #6
  return false if opts[:verify_cleanstack] && !@scripts[in_idx].stack.empty?
  sig_valid end
 
 def bitcoinconsensus_verify_script(
- in_idx, outpoint_data, block_timestamp = Time.now.to_i, opts = {} )
+ in_idx, outpoint_data, blocktimestamp = Time.now.to_i, opts = {} )
  consensus_available = Bitcoin::BitcoinConsensus.lib_available?
  raise 'Bitcoin::BitcoinConsensus shared library not found' unless consensus_available
- outpoint_idx  = @in[in_idx].prev_out_index
+ outpoint_idx  = @inputs[in_idx].prev_out_index
  script_pubkey = script_pubkey_from_outpoint_data(outpoint_data, outpoint_idx)
  flags  = Bitcoin::BitcoinConsensus::SCRIPT_VERIFY_NONE
- flags |= Bitcoin::BitcoinConsensus::SCRIPT_VERIFY_P2SH if block_timestamp >= 1_333_238_400
  flags |= Bitcoin::BitcoinConsensus::SCRIPT_VERIFY_SIGPUSHONLY if opts[:verify_sigpushonly]
  flags |= Bitcoin::BitcoinConsensus::SCRIPT_VERIFY_MINIMALDATA if opts[:verify_minimaldata]
  flags |= Bitcoin::BitcoinConsensus::SCRIPT_VERIFY_CLEANSTACK if opts[:verify_cleanstack]
@@ -213,13 +167,13 @@ def bitcoinconsensus_verify_script(
  Bitcoin::BitcoinConsensus.verify_script(in_idx, script_pubkey, payload, flags) end
 
 def to_hash(options = {}) # convert to ruby hash (see also #from_hash)
- @hash ||= hash_from_payload(to_old_payload)
+ @hash ||= hash_from_payload(to_payload)
  h = {
   'hash' => @hash, 'ver' => @ver, # 'nid' => normalized_hash,
-  'vin_sz' => @in.size, 'vout_sz' => @out.size,
-  'lock_time' => @lock_time, 'size' => (@payload ||= to_payload).bytesize,
-  'in'  =>  @in.map { |i| i.to_hash(options) },
-  'out' => @out.map { |o| o.to_hash(options) } }
+  'vin_sz' => @inputs.size, 'vout_sz' => @outputs.size,
+  'locktime' => @locktime, 'size' => (@payload ||= to_payload).bytesize,
+  'in'  =>  @inputs.map { |i| i.to_hash(options) },
+  'out' => @outputs.map { |o| o.to_hash(options) } }
  h['nid'] = normalized_hash if options[:with_nid]
  h end
 
@@ -229,53 +183,53 @@ def to_json(options = { space: '' }, *_a) # generates rawblock json as seen in t
 def to_json_file(path) # write json representation to a file (see also #to_json)
  File.open(path, 'wb') { |f| f.print to_json; } end
 
-def self.from_hash(h, do_raise = true) # parse ruby hash (see also #to_hash)
+def self.from_hash(this_h, do_raise = true) # parse ruby hash (see also #to_hash) ["txid", "hash", "version", "size", "locktime", "vin", "vout", "hex"]
  tx = new(nil)
- tx.ver = (h['ver'] || h['version'])
- tx.lock_time = h['lock_time']
- ins  = h['vin']  || h['inputs']
- outs = h['vout'] || h['outputs']
- ins.each { |input| tx.add_in(TxIn.from_hash(input)) }
+ tx.ver = this_h['version']
+ tx.locktime = this_h['locktime']
+ ins  = this_h['vin']
+ outs = this_h['vout']
+ ins.each  { |input | tx.add_in  TxIn.from_hash (input)  }
  outs.each { |output| tx.add_out TxOut.from_hash(output) }
  tx.instance_eval do
-  @hash = hash_from_payload(to_old_payload)
-  @payload = to_payload end
- if h['hash'] && (h['hash'] != tx.hash)
-  raise "Tx hash mismatch! Claimed: #{h['hash']}, Actual: #{tx.hash}" if do_raise end
+  @hash = hash_from_payload(to_payload)
+  @payload = to_payload end # Using instance_eval so as to be working on @inputs and @outputs code smell??
+ if this_h['hash'] && (this_h['hash'] != tx.hash) && do_raise
+  raise "Tx hash mismatch! Claimed: #{this_h['hash']}, Actual: #{tx.hash}" end
  tx end
 
-def self.binary_from_hash(h) # convert ruby hash to raw binary
+def self.binary_from_hash(h)           # convert ruby hash to raw binary
  tx = from_hash(h)
  tx.to_payload end
 
-def self.from_json(json_string) # parse json representation
+def self.from_json(json_string)        # parse json representation
  from_hash(JSON.parse(json_string)) end
 
 def self.binary_from_json(json_string) # convert json representation to raw binary
  from_json(json_string).to_payload end
 
-def self.from_file(path) # read binary block from a file
+def self.from_file(path)               # read binary block from a file
  new(Bitcoin::Protocol.read_binary_file(path)) end
 
-def self.from_json_file(path) # read json block from a file
+def self.from_json_file(path)          # read json block from a file
  from_json(Bitcoin::Protocol.read_binary_file(path)) end
 
 def size
  payload.bytesize end
 
-def is_final?(block_height, block_time) # rubocop:disable Naming/PredicateName
+def is_final?(block_height, blocktime) # rubocop:disable Naming/PredicateName
  warn '[DEPRECATION] `Tx.is_final?` is deprecated. Use `final?` instead.'
- final?(block_height, block_time) end
+ final?(block_height, blocktime) end
 
 # Checks if transaction is final taking into account height and time
 # of a block in which it is located (or about to be included if it's unconfirmed tx).
-def final?(block_height, block_time)
- return true if lock_time.zero?  # No time lock - tx is final.
+def final?(block_height, blocktime)
+ return true if locktime.zero?  # No time lock - tx is final.
  # Time based nLockTime implemented in 0.1.6
- # If lock_time is below the magic threshold treat it as a block height.
- # If lock_time is above the threshold, it's a unix timestamp.
- lock_threshold = lock_time < Bitcoin::LOCKTIME_THRESHOLD ? block_height : block_time
- return true if lock_time < lock_threshold
+ # If locktime is below the magic threshold treat it as a block height.
+ # If locktime is above the threshold, it's a unix timestamp.
+ lock_threshold = locktime < Bitcoin::LOCKTIME_THRESHOLD ? block_height : blocktime
+ return true if locktime < lock_threshold
  inputs.each { |input| return false unless input.final? }
  true end
 
@@ -328,47 +282,20 @@ def calculate_minimum_fee(allow_free = true, mode = :block)
   min_fee = Bitcoin.network[:max_money] unless min_fee.between?(
    0, Bitcoin.network[:max_money] )
   min_fee end
-# rubocop:enable PerceivedComplexity
-def is_coinbase? # rubocop:disable Naming/PredicateName
- warn '[DEPRECATION] `Tx.is_coinbase?` is deprecated. Use `coinbase?` instead.'
- coinbase? end
 
 def coinbase?
  inputs.size == 1 && inputs.first.coinbase? end
 
 def normalized_hash
- signature_hash_for_input(-1, nil, SIGHASH_TYPE[:all]).reverse.hth end
-
-alias nhash normalized_hash
+ signature_hash_for_input( -1, nil, SIGHASH_TYPE[:all]).reverse.hth end
 
 # sort transaction inputs and outputs under BIP 69
 # https://github.com/bitcoin/bips/blob/master/bip-0069.mediawiki This is interesting.
 def lexicographical_sort!
- inputs.sort_by! { |i| [i.previous_output, i.prev_out_index] }
- outputs.sort_by! { |o| [o.amount, o.pk_script.bth] } end
+ inputs.sort_by!  { |i| [i.previous_output, i.prev_out_index] }
+ outputs.sort_by! { |o| [o.amount, o.pk_script.bth]           } end
 
 private
-def signature_hash_for_input_bip143(input_idx, script_code, prev_out_value, hash_type)
- hash_prevouts = Digest::SHA256.digest( Digest::SHA256.digest(
-  @in.map { |i| [i.prev_out_hash, i.prev_out_index].pack('a32V') }.join ) )
- hash_sequence = Digest::SHA256.digest(Digest::SHA256.digest(@in.map(&:sequence).join))
- outpoint = [@in[input_idx].prev_out_hash, @in[input_idx].prev_out_index].pack('a32V')
- amount = [prev_out_value].pack('Q')
- nsequence = @in[input_idx].sequence
- hash_outputs = Digest::SHA256.digest(Digest::SHA256.digest(@out.map(&:to_payload).join))
- case (hash_type & 0x1f)
- when SIGHASH_TYPE[:single]
-  hash_outputs = if input_idx >= @out.size
-   "\x00".ljust(32, "\x00")
-   else Digest::SHA256.digest(Digest::SHA256.digest(@out[input_idx].to_payload)) end
-  hash_sequence = "\x00".ljust(32, "\x00")
- when SIGHASH_TYPE[:none]
-  hash_sequence = hash_outputs = "\x00".ljust(32, "\x00") end
- if (hash_type & SIGHASH_TYPE[:anyonecanpay]) != 0
-  hash_prevouts = hash_sequence = "\x00".ljust(32, "\x00") end
- buf = [[@ver].pack('V'), hash_prevouts, hash_sequence, outpoint, script_code,
-        amount, nsequence, hash_outputs, [@lock_time, hash_type].pack('VV')].join
- Digest::SHA256.digest(Digest::SHA256.digest(buf)) end
 
 def script_pubkey_from_outpoint_data(outpoint_data, outpoint_idx)
  if outpoint_data.respond_to?(:out)  # If given an entire previous transaction, take the script from it
@@ -385,3 +312,38 @@ def amount_from_outpoint_data(outpoint_data, outpoint_idx)
  elsif outpoint_data.respond_to?(:pk_script)
   # If given an transaction output, take the amount
   outpoint_data.amount end end end end end
+
+=begin
+
+  if fork_id && (hash_type & SIGHASH_TYPE[:forkid]) != 0
+   raise 'SIGHASH_FORKID is enabled, so prev_out_value is required' if prev_out_value.nil?
+   # According to the spec, we should modify the sighash by replacing the 24 most significant
+   # bits with the fork ID. However, Bitcoin ABC does not currently implement this since the
+   # fork_id is an implicit 0 and it would make the sighash JSON tests fail. Will leave as a
+   # TODO for now.
+   raise NotImplementedError, 'fork_id must be 0' unless fork_id.zero?
+   script_code = Bitcoin::Protocol.pack_var_string(subscript)
+   return signature__hash_for_input_bip143(input_idx, script_code, prev_out_value, hash_type) end
+
+def signature__hash_for_input_bip143(input_idx, script_code, prev_out_value, hash_type) # DEPR segwit
+ # https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki
+ hash_prevouts = Digest::SHA256.digest( Digest::SHA256.digest( @inputs.map { |i| [i.prev_out_hash, i.prev_out_index].pack('a32V') }.join ) )
+ hash_sequence = Digest::SHA256.digest(Digest::SHA256.digest(@inputs.map(&:sequence).join))
+ outpoint = [@inputs[input_idx].prev_out_hash, @inputs[input_idx].prev_out_index].pack('a32V')
+ amount = [prev_out_value].pack('Q')
+ nsequence = @inputs[input_idx].sequence
+ hash_outputs = Digest::SHA256.digest(Digest::SHA256.digest(@outputs.map(&:to_payload).join))
+ case (hash_type & 0x1f)
+ when SIGHASH_TYPE[:single]
+  hash_outputs = if input_idx >= @outputs.size
+   "\x00".ljust(32, "\x00")
+   else Digest::SHA256.digest(Digest::SHA256.digest(@outputs[input_idx].to_payload)) end
+  hash_sequence = "\x00".ljust(32, "\x00")
+ when SIGHASH_TYPE[:none]
+  hash_sequence = hash_outputs = "\x00".ljust(32, "\x00") end
+ if (hash_type & SIGHASH_TYPE[:anyonecanpay]) != 0
+  hash_prevouts = hash_sequence = "\x00".ljust(32, "\x00") end
+ buff = [[@ver].pack('V'), hash_prevouts, hash_sequence, outpoint, script_code,
+        amount, nsequence, hash_outputs, [@locktime, hash_type].pack('VV')].join
+ Digest::SHA256.digest(Digest::SHA256.digest(buff)) end
+=end

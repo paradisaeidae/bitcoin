@@ -14,8 +14,7 @@ $use_coinbase_bbe = ARGV.select{|i| i.downcase == 'coinbase' }[0] ? true : false
 # fetch transaction from bbe as json and deserialize into Bitcoin::Protocol::Tx object
 def get_tx(hash)
  if $use_coinbase_bbe && !$testnet then url = "https://coinbase.com/network/tx/%s.json" % [hash]
- else
-  url = "http://blockexplorer.com/%srawtx/%s" % [$testnet ? 'testnet/' : '',  hash] end
+ else url = "http://blockexplorer.com/%srawtx/%s" % [$testnet ? 'testnet/' : '',  hash] end
  json = open(url).read
  Bitcoin::Protocol::Tx.from_json(json)
  rescue
@@ -33,7 +32,8 @@ if tx1.in.all?{|txin| txin.coinbase? }
 
 tx1.in.each_with_index do |txin, idx|
  if txin.coinbase?
-  puts "skipping coinbase transaction input.."; next end
+  puts "skipping coinbase transaction input.."
+  next end
  
  prev_tx = get_tx(txin.previous_output)
  unless prev_tx

@@ -145,7 +145,7 @@ def encode_compact_bits(target)
 
 def decode_target(target_bits)
  case target_bits
- when Bitcoin::Integer
+ when Integer
   [ decode_compact_bits(target_bits).to_i(16), target_bits ]
  when String
   [ target_bits.to_i(16), encode_compact_bits(target_bits) ] end end

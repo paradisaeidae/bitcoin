@@ -73,7 +73,7 @@ def to_string(chunks=nil) # string representation of the script
  (chunks || @chunks).each.with_index{|i,idx|
   string << " " unless idx == 0
   string << case i
-  when Bitcoin::Integer
+  when Integer
    if opcode = OPCODES_PARSE_BINARY[i] then opcode
    else "(opcode-#{i})" end
   when String
@@ -85,7 +85,7 @@ def to_string(chunks=nil) # string representation of the script
 def to_binary(chunks=nil)
  (chunks || @chunks).map{|chunk|
   case chunk
-  when Bitcoin::Integer; [chunk].pack("C*")
+  when Integer; [chunk].pack("C*")
   when String; self.class.pack_pushdata(chunk) end
  }.join end
 
@@ -118,7 +118,7 @@ def subscript_codeseparator(separator_index)
 # Adds opcode (OP_0, OP_1, ... OP_CHECKSIG etc.)
 # Returns self.
 def append_opcode(opcode)
- raise "Opcode should be an integer" if !opcode.is_a?(Bitcoin::Integer)
+ raise "Opcode should be an integer" if !opcode.is_a?(Integer)
  if opcode >= OP_0 && opcode <= 0xff
   @chunks << opcode
  else raise "Opcode should be within [0x00, 0xff]" end 
@@ -197,7 +197,7 @@ def self.binary_from_string(script_string) # raw script binary of a string repre
    else
     data = [i].pack("H*")
     pack_pushdata(data) end end
-  buf << if i.is_a?(Bitcoin::Integer)
+  buf << if i.is_a?(Integer) # Integer
    i < 256 ? [i].pack("C") : [OpenSSL::BN.new(i.to_s,10).to_hex].pack("H*")
    else i
    end if i }
@@ -209,7 +209,6 @@ def invalid?
 # run the script. +check_callback+ is called for OP_CHECKSIG operations
 def run(block_timestamp=Time.now.to_i, opts={}, &check_callback)
  return false if @parse_invalid
- #p [to_string, block_timestamp, is_p2sh?]
  @script_invalid = true if @raw_byte_sizes.any?{|size| size > 10_000 }
  @last_codeseparator_index = 0 # 1333238400
  @debug = []
@@ -220,7 +219,7 @@ def run(block_timestamp=Time.now.to_i, opts={}, &check_callback)
   @do_exec = @exec_stack.count(false) == 0 ? true : false
   #p [@stack, @do_exec]
   case chunk
-  when Bitcoin::Integer
+  when Integer
    if DISABLED_OPCODES.include?(chunk)
     @script_invalid = true
     @debug << "DISABLED_#{OPCODES[chunk]}"
@@ -230,8 +229,7 @@ def run(block_timestamp=Time.now.to_i, opts={}, &check_callback)
    when *OPCODES_METHOD.keys
     m = method( n=OPCODES_METHOD[chunk] )
     @debug << n.to_s.upcase
-    # invoke opcode method
-    case m.arity
+    case m.arity # invoke opcode method
     when 0
      m.call
     when 1
@@ -282,7 +280,7 @@ def is_hash160? # is this a hash160 (address) script
   @chunks[2].is_a?(String) && @chunks[2].bytesize == 20 end
 
 def is_multisig? # is this a multisig script
- return false  if @chunks.size < 4 || !@chunks[-2].is_a?(Bitcoin::Integer)
+ return false  if @chunks.size < 4 || !@chunks[-2].is_a?(Integer)
  @chunks[-1] == OP_CHECKMULTISIG and get_multisig_pubkeys.all?{|c| c.is_a?(String) } end
 
 def is_op_return? # is this an op_return script
@@ -390,7 +388,7 @@ def self.to_pubkey_script(pubkey)
 # generate hash160 tx for given +address+. returns a raw binary script of the form:
 #  OP_DUP OP_HASH160 <hash160> OP_EQUALVERIFY OP_CHECKSIG
 def self.to_hash160_script(hash160)
- return nil  unless hash160
+ return nil unless hash160
  #  DUP   HASH160  length  hash160    EQUALVERIFY  CHECKSIG
  [ ["76", "a9",    "14",   hash160,   "88",        "ac"].join ].pack("H*") end
 
@@ -501,9 +499,10 @@ def sigops_count_accurate(is_accurate)
  @chunks.each do |chunk| # pushdate or opcode
   if chunk == OP_CHECKSIG || chunk == OP_CHECKSIGVERIFY then count += 1
   elsif chunk == OP_CHECKMULTISIG || chunk == OP_CHECKMULTISIGVERIFY
-   # Accurate mode counts exact number of pubkeys required (not signatures, but pubkeys!). Only used in P2SH scripts.
+   # Accurate mode counts exact number of pubkeys required (not signatures, but pubkeys!).
+   # Only used in P2SH scripts.
    # Inaccurate mode counts every multisig as 20 signatures.
-   if is_accurate && last_opcode && last_opcode.is_a?(Bitcoin::Integer) && last_opcode >= OP_1 && last_opcode <= OP_16
+   if is_accurate && last_opcode && last_opcode.is_a?(Integer) && last_opcode >= OP_1 && last_opcode <= OP_16
     count += ::Bitcoin::Script.decode_OP_N(last_opcode)
    else count += 20 end end
   last_opcode = chunk end
@@ -558,7 +557,7 @@ def op_checksig(check_callback, opts={})
  return invalid if @stack.size < 2
  pubkey = cast_to_string(@stack.pop)
  return (@stack << 0) unless Bitcoin::Script.check_pubkey_encoding?(pubkey, opts)
- drop_sigs      = [ cast_to_string(@stack[-1]) ]
+ drop_sigs = [ cast_to_string(@stack[-1]) ]
  signature = cast_to_string(@stack.pop)
  return invalid unless Bitcoin::Script.check_signature_encoding?(signature, opts)
  return (@stack << 0) if signature == ""
@@ -660,7 +659,7 @@ def self.is_defined_hashtype_signature?(sig)
  return false if sig.empty?
  s = sig.unpack("C*")
  hash_type = s[-1] & (~(SIGHASH_TYPE[:anyonecanpay] | SIGHASH_TYPE[:forkid]))
- return false if hash_type < SIGHASH_TYPE[:all]   ||  hash_type > SIGHASH_TYPE[:single] # Non-canonical signature: unknown hashtype byte
+ return false if hash_type < SIGHASH_TYPE[:all] || hash_type > SIGHASH_TYPE[:single] # Non-canonical signature: unknown hashtype byte
  true end
 
 private

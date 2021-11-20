@@ -6,7 +6,7 @@ Bitcoin::NETWORKS[:spec] = {
  project: :bitcoin,
  magic_head: 'spec',
  address_version: '6f',
- p2sh_version: 'c4',
+# p2sh_version: 'c4',
  privkey_version: 'ef',
  default_port: 48_333,
  protocol_version: 70_001,

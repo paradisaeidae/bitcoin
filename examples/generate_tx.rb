@@ -9,13 +9,13 @@ value = prev_tx.outputs[prev_tx_output_index].value
 #value = 1337 # maybe change the value (eg subtract for fees)
 
 tx = Bitcoin::Protocol::Tx.new
-tx.add_in  Bitcoin::Protocol::TxIn.new(prev_tx.binary_hash, prev_tx_output_index, 0)
+tx.add_in  Bitcoin::Protocol::TxIn.new(prev_tx.binary_hash, prev_tx_output_index, 0) # return the tx hash in binary format
 tx.add_out Bitcoin::Protocol::TxOut.value_to_address(value, "1MiQ3zD3hzZBZ4cUDfPd8Eqnjcedkwt5jy") # <- dest address
 
 # if all in and outputs are defined, start signing inputs.
 key_pair = Bitcoin.open_key("9b2f08ebc186d435ffc1d10f3627f05ce4b983b72c76b0aee4fcce99e57b0342") # <- privkey
 sig = Bitcoin.sign_data(key_pair, tx.signature_hash_for_input(0, prev_tx))
-tx.in[0].script_sig = Bitcoin::Script.to_signature_pubkey_script(sig, [key_pair.public_key_hex].pack("H*"))
+tx.inputs[0].script_sig = Bitcoin::Script.to_signature_pubkey_script(sig, [key_pair.public_key_hex].pack("H*"))
 #tx.in[0].add_signature_pubkey_script(sig, key.public_key_hex)
 
 # finish check

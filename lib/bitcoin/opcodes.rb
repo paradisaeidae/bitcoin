@@ -15,8 +15,8 @@ OP_DIV 	    150 	0x96 	a b 	out 	a is divided by b
 OP_MOD  	151 	0x97 	a b 	out 	return the remainder after a is divided by b
 OP_NUM2BIN 	128 	0x80 	a b 	out 	convert numeric value a into byte sequence of length b
 OP_BIN2NUM 	129 	0x81 	x 	out 	convert byte sequence x into a numeric value
-=end
-=begin
+
+
 Bitcoin ABC, the full node implementation developed by Amaury Séchet and currently used by most miners, 
 has announced plans to activate, among other changes, two new opcodes during the protocol’s November hard fork 
 — OP_CHECKDATASIG and OP_CHECKDATASIGVERIFY — as well as implement canonical transaction ordering.
@@ -176,7 +176,7 @@ OPCODES_ALIAS.each{|k,v| OPCODES_PARSE_STRING[k] = v }
 2.upto(16).each{|i|      OPCODES_PARSE_STRING["OP_#{i}"] = OP_2_16[i-2] }
 2.upto(16).each{|i|      OPCODES_PARSE_STRING["#{i}"   ] = OP_2_16[i-2] }
 [1,2,4].each{|i|         OPCODES_PARSE_STRING.delete("OP_PUSHDATA#{i}") }
-SIGHASH_TYPE = {
+SIGHASH_TYPE = { # https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/script/sighashtype.h
  all: 1,
  none: 2,
  single: 3,
@@ -188,9 +188,8 @@ attr_reader :raw, :chunks, :debug, :stack
 # Converts OP_{0,1,2,...,16} into 0, 1, 2, ..., 16.
 # Returns nil for other opcodes.
 def self.decode_OP_N(opcode)
- if opcode == OP_0
-  return 0 end
- if opcode.is_a?(Bitcoin::Integer) && opcode >= OP_1 && opcode <= OP_16
+ if opcode == OP_0 then return 0 end
+ if opcode.is_a?(Integer) && opcode >= OP_1 && opcode <= OP_16
   return opcode - (OP_1 - 1);
  else nil end end
 
@@ -522,7 +521,7 @@ def op_checkmultisigverify(check_callback, opts={})
  op_verify end
 
 OPCODES_METHOD = Hash[*instance_methods.grep(/^op_/).map{|m|
- [ (OPCODES.find{|k,v| v == m.to_s.upcase }.first rescue nil), m ]
+ [ ( OPCODES.find{|k,v| v == m.to_s.upcase }.first rescue nil), m ]
   }.flatten]
 OPCODES_METHOD[0]  = :op_0
 OPCODES_METHOD[81] = :op_1 end
