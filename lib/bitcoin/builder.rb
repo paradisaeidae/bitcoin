@@ -149,14 +149,13 @@ def output(value = nil, recipient = nil, type = :address)
 def tx(opts = {})
  return @tx if @tx.hash
  if opts[:change_address] && !opts[:input_value] then raise "Must give 'input_value' when auto-generating change output!" end
- @ins.each {  |i| @tx.add_in(i.txin) }
+ @ins.each  { |i| @tx.add_in(i.txin) }
  @outs.each { |o| @tx.add_out(o.txout) }
  if opts[:change_address]
   output_value = @tx.out.map(&:value).inject(:+) || 0
   change_value = opts[:input_value] - output_value
   if opts[:leave_fee] then fee = @tx.minimum_block_fee + (opts[:extra_fee] || 0)
-   if change_value >= fee then change_value -= fee
-   else change_value = 0 end end
+   if change_value >= fee then change_value -= fee else change_value = 0 end end
   if change_value > 0
    script = Script.to_address_script(opts[:change_address])
    @tx.add_out(P::TxOut.new(change_value, script)) end end
@@ -195,8 +194,7 @@ def get_script_sig(inc, hash_type)
   sigs = inc.sign(@sig_hash)
   redeem_script = inc.instance_eval { @redeem_script }
   if redeem_script then script_sig = Script.to_multisig_script_sig(*sigs) end
-  # when no redeem_script is given, do a regular multisig spend
- else
+ else # when no redeem_script is given, do a regular multisig spend
   sig = inc.sign(@sig_hash) # only one key given, generate signature and script_sig
   script_sig = Script.to_signature_pubkey_script(sig, [inc.key.pub].pack('H*'), hash_type) end
  script_sig end
@@ -208,14 +206,11 @@ def sign_input(i, inc)
  # get the signature script; use +redeem_script+ if given, otherwise use the prev_script
  sig_script = inc.instance_eval { @redeem_script }
  sig_script ||= @prev_script
- hash_type = if inc.prev_out_forkid
-  Script::SIGHASH_TYPE[:all] | Script::SIGHASH_TYPE[:forkid]
+ hash_type = if inc.prev_out_forkid then Script::SIGHASH_TYPE[:all] | Script::SIGHASH_TYPE[:forkid]
   else Script::SIGHASH_TYPE[:all] end
- # when a sig_script was found, generate the sig_hash to be signed
- if sig_script
+ if sig_script # when a sig_script was found, generate the sig_hash to be signed
   script = Script.new(sig_script)
-  @sig_hash = if inc.prev_out_forkid
-   @tx.signature_hash_for_input( i, sig_script, hash_type, inc.value, inc.prev_out_forkid )
+  @sig_hash = if inc.prev_out_forkid then @tx.signature_hash_for_input( i, sig_script, hash_type, inc.value, inc.prev_out_forkid )
    else @tx.signature_hash_for_input(i, sig_script) end end
 
  # when there is a sig_hash and one or more signature_keys were specified

@@ -69,10 +69,8 @@ alias parse_data parse_data_from_io
 
 def to_payload # was to_old_payload due to witness 'protection'! https://github.com/lian/bitcoin-ruby/blob/f9b817c946b3ef99c7652c318c155200aadc6489/lib/bitcoin/protocol/tx.rb#L152
  pins, pouts = '', ''
- @inputs.each  { |input |
-  pins  << input.to_payload  }
- @outputs.each { |output|
-  pouts << output.to_payload }
+ @inputs.each  { |input | pins  << input.to_payload  }
+ @outputs.each { |output| pouts << output.to_payload }
 
  [@ver].pack('V') << Protocol.pack_var_int(@inputs.size) \
   << pins << Protocol.pack_var_int(@outputs.size) << pouts << [@locktime].pack('V') end
@@ -152,8 +150,7 @@ def verify_input_signature(in_idx, outpoint_data, blocktimestamp = Time.now.to_i
  return false if opts[:verify_cleanstack] && !@scripts[in_idx].stack.empty?
  sig_valid end
 
-def bitcoinconsensus_verify_script(
- in_idx, outpoint_data, blocktimestamp = Time.now.to_i, opts = {} )
+def bitcoinconsensus_verify_script( in_idx, outpoint_data, blocktimestamp = Time.now.to_i, opts = {} )
  consensus_available = Bitcoin::BitcoinConsensus.lib_available?
  raise 'Bitcoin::BitcoinConsensus shared library not found' unless consensus_available
  outpoint_idx  = @inputs[in_idx].prev_out_index
