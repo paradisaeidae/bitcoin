@@ -75,7 +75,7 @@ def to_hash(_options = {})
 
 def to_hash_ORIG(_options = {})
  trans_h = { 'prev_out' => { 'hash' => @prev_out_hash.reverse_hth, 'n' => @prev_out_index } }
- if coinbase? then trans_h['coinbase']  = @script_sig.unpack('H*')[0]
+ if coinbase? then trans_h['coinbase'] = @script_sig.unpack('H*')[0]
  else trans_h['scriptSig'] = Bitcoin::Script.new(@script_sig).to_string end # coinbase tx
  trans_h['sequence'] = @sequence.unpack('V')[0] unless @sequence == "\xff\xff\xff\xff"
  trans_h end

@@ -91,6 +91,6 @@ def self.connect_random_from_dns(connections)
 if $PROGRAM_NAME == __FILE__
  EM.run do
   connections = []
-  # Bitcoin::Connection.connect('127.0.0.1', 8333, connections)
+  Bitcoin::Connection.connect('elsdk', 8333, connections)
   # Bitcoin::Connection.connect('217.157.1.202', 8333, connections)
-  Bitcoin::Connection.connect_random_from_dns(connections) end end
+  # Bitcoin::Connection.connect_random_from_dns(connections) end end

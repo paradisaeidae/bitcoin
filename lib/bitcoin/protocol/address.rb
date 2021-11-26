@@ -18,8 +18,8 @@ def initialize(data = nil)
   self[:service] = 1
   self[:ip] = '127.0.0.1'
   self[:port] = Bitcoin.network[:default_port] end end
-# is this address alive?
-def alive?
+
+def alive? # is this address alive?
  (Time.now.tv_sec - 7200) <= self[:time] end
 
 def to_payload
