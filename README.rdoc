@@ -1,5 +1,5 @@
-== This is a BSV oriented fork of Lian's repo.
-== It is in basic refactoring state for this and not yet usable.
+== This was forked from bitcoin-ruby now dis-forked.
+== It has been reduced to the fundamental bitcoin state.
 == Removed references to litecoin, dogecoin, namecoin, Bech32
 This is a ruby library for interacting with the bitcoin protocol/network.
 As per the adjustments to return to:

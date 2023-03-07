@@ -66,9 +66,10 @@ def to_payload(script = @script_sig, sequence = @sequence)
  [@prev_out_hash, @prev_out_index].pack('a32V') << Protocol.pack_var_int(script.bytesize) \
                                                 << script << (sequence || DEFAULT_SEQUENCE) end
 def to_hash(_options = {})
- if !@prev_out_hash.nil? then
-  trans_h = { 'prev_out' => { 'hash' => @prev_out_hash.reverse_hth, 'n' => @prev_out_index } }
- else trans_h = { 'prev_out' => {} } end # else coinbase tx https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/primitives/transaction.cpp
+ # @prev_out_hash.nil? occurs when trans is coinbase.
+ if @prev_out_hash.nil? then trans_h = { 'prev_out' => @script_sig.unpack('H*')[0] }
+  else trans_h = { 'prev_out' => { 'hash' => @prev_out_hash.reverse_hth, 'n' => @prev_out_index } } end
+ # else coinbase tx https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/primitives/transaction.cpp
  trans_h['scriptSig'] = Bitcoin::Script.new(@script_sig).to_string
  trans_h['sequence'] = @sequence.unpack('V')[0] unless @sequence == "\xff\xff\xff\xff"
  trans_h end
