@@ -4,20 +4,15 @@
 # https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/script/script.cpp
 ['digest/sha2', 'digest/rmd160', 'openssl', 'securerandom'].each {| ment | require ment}
 module Bitcoin
-autoload :Connection,   'bitcoin/connection'
-autoload :Protocol,     'bitcoin/protocol'
-autoload :P,            'bitcoin/protocol'
-autoload :Script,       'bitcoin/script'
-autoload :VERSION,      'bitcoin/version'
-autoload :Key,          'bitcoin/key'
-autoload :ExtKey,       'bitcoin/ext_key'
-autoload :ExtPubkey,    'bitcoin/ext_key'
-autoload :Builder,      'bitcoin/builder'
-autoload :BloomFilter,  'bitcoin/bloom_filter'
-autoload :ContractHash, 'bitcoin/contracthash'
+
+mods =  [:Connection, :Protocol, :P, :Script, :VERSION, :Key, :ExtKey, :ExtPubkey, :Builder, :BloomFilter, :ContractHash, ]
+codes = ['connection', 'protocol', 'protocol', 'script', 'version', 'key', 'ext_key', 'ext_key', 'builder', 'bloom_filter', 'contracthash']
+mods.each_with_index { | mod, code | autoload mod, 'bitcoin/' + codes[code] } 
+BSV = Struct.new(:name, :magic_head, :message_magic, :address_version, :p2sh_version, :privkey_version, :extended_privkey_version, :extended_pubkey_version, :fork_id).new(
+      :bsv, 'e3e1f3e8', 'Bitcoin SV', '00', '05', '80', '0488ade4', '0488b21e', 0x0b110907 )
 
 module Trezor
-autoload :Mnemonic,   'bitcoin/trezor/mnemonic' end
+autoload :Mnemonic, 'bitcoin/trezor/mnemonic' end
 
 module Util
 def address_version
@@ -219,7 +214,7 @@ def sign_data(key, data)
   buf = sig + [Script::SIGHASH_TYPE[:all]].pack("C") # is_der_signature expects sig + sighash_type format
   if Script.is_der_signature?(buf) then break
   else p ["Bitcoin#sign_data: invalid der signature generated, trying again.", data.unpack("H*")[0], sig.unpack("H*")[0]] end }
-  return sig end
+ return sig end
 
 def verify_signature(hash, signature, public_key)
  key = bitcoin_elliptic_curve
@@ -353,6 +348,7 @@ def to_mpi; to_s(0).unpack("C*") end end
 
 class PKey::EC
 def private_key_hex
+ debugger
  private_key.to_hex.rjust(64, '0') end
 
 def public_key_hex
@@ -428,14 +424,14 @@ MIN_FEE_MODE     = [ :block, :relay, :send ]
 NETWORKS = {}
 NETWORKS[:main] = {
  project: :main,
- magic_head: "\xF9\xBE\xB4\xD9",  # 0xF9BEB4D9
+ magic_head: "\xE8\xF3\xE1\xE3",
  message_magic: "Bitcoin Signed Message:\n",
  address_version: "00",
  privkey_version: "80",
  extended_privkey_version: "0488ade4",
  extended_pubkey_version: "0488b21e",
  default_port: 8333,
- protocol_version: 70001,
+ protocol_version: 70015,
  coinbase_maturity: 100,
  reward_base: 50 * COIN,
  reward_halving: 210_000,
@@ -449,29 +445,42 @@ NETWORKS[:main] = {
  dust: CENT,
  per_dust_fee: false,
  dns_seeds: [ '???' ],
- genesis_hash: "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+ genesis_hash: "0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
  proof_of_work_limit: 0x1d00ffff,
  known_nodes: [ '???' ],
  checkpoints: {}}
+NETWORKS[:stn] = {
+ project: :testnet,
+ known_nodes: [ '????' ],
+ default_port: 9333,
+ magic_head: "\xE3\xE1\xF3\xE8",
+ address_version: "6f",
+ privkey_version: "ef",
+ extended_privkey_version: "04358394", 
+ extended_pubkey_version: "043587cf",
+ dns_seeds: [ ],
+ genesis_hash: "0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+ proof_of_work_limit: 0x1d7fffff,
+ checkpoints: {} }
 NETWORKS[:testnet] = {
  project: :testnet,
  known_nodes: [ '????' ],
  default_port: 18332 ,
- magic_head: "\xFA\xBF\xB5\xDA",
+ magic_head: "\xF4\xE5\xF3\xF4",
  address_version: "6f",
  privkey_version: "ef",
- extended_privkey_version: "04358394",
+ extended_privkey_version: "04358394", 
  extended_pubkey_version: "043587cf",
  dns_seeds: [ ],
  genesis_hash: "00000007199508e34a9ff81e6ec0c477a4cccff2a4767a8eee39c11db367b008",
- proof_of_work_limit: 0x1d07fff8,
- checkpoints: {},  }
+ proof_of_work_limit: 0x1d7fffff,
+ checkpoints: {} }
 NETWORKS[:regtest] = {
  project: :regtest,
  known_nodes: ['elsdk'],
  default_port: 18332 ,
  genesis_hash: "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206",
- magic_head: "\xFA\xBF\xB5\xDA", # 0x0B110907 on BCH
+ magic_head: "\xFA\x1A\xF9\xBF",
  address_version: "6f",
  privkey_version: "ef",
  extended_privkey_version: "04358394",
@@ -489,7 +498,6 @@ NETWORKS[:regtest] = {
  dust: CENT,
  per_dust_fee: false,
  proof_of_work_limit: 0x207fffff,
+ #proof_of_work_limit: 0x1d07fff8,
  dns_seeds: [ ],
- genesis_hash: "00000007199508e34a9ff81e6ec0c477a4cccff2a4767a8eee39c11db367b008",
- proof_of_work_limit: 0x1d07fff8,
- checkpoints: {},  } end
+ checkpoints: {} } end

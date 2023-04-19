@@ -1,6 +1,6 @@
 module Bitcoin
 class Key # Elliptic Curve key as used in bitcoin.
-attr_reader :key
+attr_reader :key, :p_key_bn
 MIN_PRIV_KEY_MOD_ORDER = 0x01
 # Order of secp256k1's generator minus 1.
 MAX_PRIV_KEY_MOD_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140
@@ -32,7 +32,7 @@ def initialize(privkey = nil, pubkey = nil, opts={compressed: true})
  compressed = opts.is_a?(Hash) ? opts.fetch(:compressed, true) : opts
  @key = Bitcoin.bitcoin_elliptic_curve
  @pubkey_compressed = pubkey ? self.class.is_compressed_pubkey?(pubkey) : compressed
- set_priv(privkey)  if privkey
+ set_priv(privkey) if privkey
  set_pub(pubkey, @pubkey_compressed)  if pubkey end
 
 def generate # Generate new priv/pub key.
@@ -89,8 +89,7 @@ def sign(data)
 def verify(data, sig)
  regenerate_pubkey unless @key.public_key
  sig = Bitcoin::OpenSSL_EC.repack_der_signature(sig)
- if sig
-  @key.dsa_verify_asn1(data, sig)
+ if sig then @key.dsa_verify_asn1(data, sig)
  else false end end
 
 def sign_message(message)
@@ -197,7 +196,8 @@ def regenerate_pubkey # Regenerate public key from the private key.
 def set_priv(priv) # Set +priv+ as the new private key (converting from hex).
  value = priv.to_i(16)
  raise 'private key is not on curve' unless MIN_PRIV_KEY_MOD_ORDER <= value && value <= MAX_PRIV_KEY_MOD_ORDER
- @key.private_key = OpenSSL::BN.from_hex(priv) end
+ @p_key_bn = OpenSSL::BN.from_hex(priv) end
+ #@key.private_key = OpenSSL::BN.from_hex(priv)
 
 def set_pub(pub, compressed = nil) # Set +pub+ as the new public key (converting from hex).
  @pubkey_compressed = compressed == nil ? self.class.is_compressed_pubkey?(pub) : compressed

@@ -19,7 +19,7 @@ autoload :Handler,           'bitcoin/protocol/handler'
 autoload :Parser,            'bitcoin/protocol/parser'
 Uniq = rand(0xffffffffffffffff)
 # var_int refers to https://en.bitcoin.it/wiki/Protocol_specification#Variable_length_integer and is what
-# Satoshi called "CompactSize"
+# Craig calls "CompactSize"
 # BitcoinQT has later added even more compact format called CVarInt to use in its local block storage.
 # CVarInt is not implemented here.
 def self.unpack_var_int(payload)
@@ -27,22 +27,35 @@ def self.unpack_var_int(payload)
  when 0xfd; payload.unpack("xva*")
  when 0xfe; payload.unpack("xVa*")
  when 0xff; payload.unpack("xQa*") # TODO add little-endian version of Q
- else;      payload.unpack("Ca*") end end
+ else;      payload.unpack("Ca*") end
+ rescue => badThing
+  debugger end
 
+=begin
+ If the first byte of the integer is less than 0xfd (253), it represents the integer itself.
+ If the first byte is 0xfd, the next two   bytes represent the integer in little-endian byte order.
+ If the first byte is 0xfe, the next four                   ----""----
+ If the first byte is 0xff, the next eight                  ----""----
+=end
 def self.unpack_var_int_from_io(io)
  uchar = io.read(1).unpack("C")[0]
+ if uchar < 253 then return uchar end
  case uchar
  when 0xfd; io.read(2).unpack("v")[0]
  when 0xfe; io.read(4).unpack("V")[0]
  when 0xff; io.read(8).unpack("Q")[0]
- else;      uchar end end
+ else; raise 'Unknown uchar situation' end
+ rescue => badThing
+  debugger end
 
 def self.pack_var_int(i)
  if    i <  0xfd;                [      i].pack("C")
  elsif i <= 0xffff;              [0xfd, i].pack("Cv")
  elsif i <= 0xffffffff;          [0xfe, i].pack("CV")
  elsif i <= 0xffffffffffffffff;  [0xff, i].pack("CQ")
- else raise "int(#{i}) too large!" end end
+ else raise "int(#{i}) too large!" end
+ rescue => badThing
+ debugger end
 
 def self.unpack_var_string(payload)
  size, payload = unpack_var_int(payload)

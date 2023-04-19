@@ -1,5 +1,6 @@
 # frozen_string_literal: true
-require_relative '../lib/bitcoin'
+require_relative '../lib/bitcoin-sv'
+require_relative 'helpers/library_helpers'
 require 'json' # Used for loading some fixtures
 require 'simplecov' # Code coverage generation
 

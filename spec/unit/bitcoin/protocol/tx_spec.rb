@@ -41,17 +41,6 @@ describe Bitcoin::Protocol::Tx do
       expect(tx.hash.size).to eq(64)
       expect(tx.payload).to eq(payloads[0]) end end
 
-  describe '#parse_witness_data' do
-    it 'correctly parses witness data' do
-      tx = Bitcoin::Protocol::Tx.new(payloads[3])
-      expect(tx.hash.size).to eq(64)
-      expect(tx.payload).to eq(payloads[3]) end
-
-    it 'ignores additional payload data' do
-      tx = Bitcoin::Protocol::Tx.new(payloads[3] + 'AAAA')
-      expect(tx.hash.size).to eq(64)
-      expect(tx.payload).to eq(payloads[3]) end end
-
   describe '#hash' do
     it 'produces the expected hash and binary hash' do
       tx = Bitcoin::Protocol::Tx.new(payloads[0])
@@ -676,13 +665,10 @@ describe Bitcoin::Protocol::Tx do
       new_tx = Bitcoin::Protocol::Tx.new(nil)
       new_tx.add_in(Bitcoin::Protocol::TxIn.new(prev_tx.binary_hash, 0, 0))
       new_tx.add_out(
-        Bitcoin::Protocol::TxOut.value_to_address(
-          1_000_000,
-          '1BVJWLTCtjA8wRivvrCiwjNdL6KjdMUCTZ' ) )
+        Bitcoin::Protocol::TxOut.value_to_address( 1_000_000,  '1BVJWLTCtjA8wRivvrCiwjNdL6KjdMUCTZ' ) )
       signature_hash = new_tx.signature_hash_for_input(0, prev_tx)
       sig = Bitcoin.sign_data(key, signature_hash)
-      new_tx.in[0].script_sig = Bitcoin::Script.to_pubkey_script_sig(
-        sig, [pubkey].pack('H*') )
+      new_tx.in[0].script_sig = Bitcoin::Script.to_pubkey_script_sig( sig, [pubkey].pack('H*') )
 
       new_tx = Bitcoin::Protocol::Tx.new(new_tx.to_payload)
       expect(new_tx.hash).not_to be_nil
@@ -758,54 +744,8 @@ describe Bitcoin::Protocol::Tx do
         actual_sighash = transaction.signature_hash_for_input(
           input_index, subscript, hash_type, amount, 0
         )
-        expect(actual_sighash).to eq(expected_sighash) end end end
+        expect(actual_sighash).to eq(expected_sighash) end end
 
-  it '#signature_hash_for_witness_input' do
-    # P2WPKH
-    # https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki#Native_P2WPKH
-    tx = Bitcoin::Protocol::Tx.new(
-      '0100000002fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad' \
-      '969f0000000000eeffffffef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9' \
-      'b2b55d57b90ec68a0100000000ffffffff02202cb206000000001976a9148280b37df3' \
-      '78db99f66f85c95a783a76ac7a6d5988ac9093510d000000001976a9143bde42dbee7e' \
-      '4dbe6a21b2d50ce2f0167faa815988ac11000000'.htb )
-    signature_hash = tx.signature_hash_for_witness_input(
-      1, '00141d0f172a0ecb48aee1be1f2687d2963ae33f71a1'.htb, 600_000_000 )
-    expect(signature_hash.bth)
-      .to eq('c37af31116d1b27caf68aae9e3ac82f1477929014d5b917657d0eb49478cb670')
-
-    # P2WSH
-    # https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki#Native_P2WSH
-    tx = Bitcoin::Protocol::Tx.new(
-      '0100000002fe3dc9208094f3ffd12645477b3dc56f60ec4fa8e6f5d67c565d1c6b9216' \
-      'b36e0000000000ffffffff0815cf020f013ed6cf91d29f4202e8a58726b1ac6c79da47' \
-      'c23d1bee0a6925f80000000000ffffffff0100f2052a010000001976a914a30741f814' \
-      '5e5acadf23f751864167f32e0963f788ac00000000'.htb )
-    script_pubkey =
-      '00205d1b56b63d714eebe542309525f484b7e9d6f686b3781b6f61ef925d66d6f6a0'
-    witness_script =
-      '21026dccc749adc2a9d0d89497ac511f760f45c47dc5ed9cf352a58ac706453880aead' \
-      'ab210255a9626aebf5e29c0e6538428ba0d1dcf6ca98ffdf086aa8ced5e0d0215ea465ac'
-    signature_hash = tx.signature_hash_for_witness_input(
-      1, script_pubkey.htb, 4_900_000_000,
-      witness_script.htb, Bitcoin::Protocol::Tx::SIGHASH_TYPE[:single] )
-    expect(signature_hash.bth)
-      .to eq('82dde6e4f1e94d02c2b7ad03d2115d691f48d064e9d52f58194a6637e4194391')
-
-    # P2WSH with invalid witness script
-    tx = Bitcoin::Protocol::Tx.new(
-      '0100000002fe3dc9208094f3ffd12645477b3dc56f60ec4fa8e6f5d67c565d1c6b921' \
-      '6b36e0000000000ffffffff0815cf020f013ed6cf91d29f4202e8a58726b1ac6c79da' \
-      '47c23d1bee0a6925f80000000000ffffffff0100f2052a010000001976a914a30741f' \
-      '8145e5acadf23f751864167f32e0963f788ac00000000'.htb )
-    script_pubkey =
-      '00205d1b56b63d714eebe542309525f484b7e9d6f686b3781b6f61ef925d66d6f6a0'
-    witness_script = 'AAA'
-    expect do
-      tx.signature_hash_for_witness_input(
-        1, script_pubkey.htb, 4_900_000_000, witness_script.htb
-      ) end.to raise_error(
-      RuntimeError, 'witness script does not match script pubkey' ) end
 
   it '#legacy_sigops_count' do
     expect(Bitcoin::Protocol::Tx.new(payloads[0]).legacy_sigops_count).to eq(2)

@@ -1,6 +1,5 @@
-module Bitcoin # https://github.com/lian/bitcoin-ruby/blob/master/lib/bitcoin/protocol/txin.rb
-module Protocol
-# TxIn section of https://en.bitcoin.it/wiki/Protocol_documentation#tx
+module Bitcoin;module Protocol
+ # https://github.com/lian/bitcoin-ruby/blob/master/lib/bitcoin/protocol/txin.rb # TxIn section of https://en.bitcoin.it/wiki/Protocol_documentation#tx
 class TxIn
 attr_reader :script_sig # script_sig input Script (signature)
 # signature hash and the address of the key that needs to sign it
@@ -9,7 +8,7 @@ attr_accessor :sig_hash, :sig_address, :script_sig_length, :prev_out_hash, :prev
 
 alias prev_out prev_out_hash  # alias, real
 
-def prev_out=(hash)             # Will this overide the @prev_out= created by attr_accessor aliased??
+def prev_out=(hash)           # Will this overide the @prev_out= created by attr_accessor aliased??
  @prev_out_hash = hash end
 
 alias script script_sig
@@ -23,15 +22,13 @@ COINBASE_INDEX = 0xffffffff
 def initialize(*args)
  @prev_out_hash, @prev_out_index, @script_sig_length, @script_sig, @sequence = *args
  @script_sig_length ||= 0
- @script_sig ||= ''
- @sequence ||= DEFAULT_SEQUENCE end
+ @script_sig        ||= ''
+ @sequence          ||= DEFAULT_SEQUENCE end
 
 def ==(other) # compare to another txout
- @prev_out_hash == other.prev_out_hash &&
-  @prev_out_index == other.prev_out_index &&
-   @script_sig == other.script_sig &&
-    @sequence == other.sequence
- rescue StandardError
+ @prev_out_hash == other.prev_out_hash && @prev_out_index == other.prev_out_index &&
+                   @script_sig == other.script_sig && @sequence == other.sequence
+ rescue StandardError => badThing
   false end
 
 def is_final? # rubocop:disable Naming/PredicateName
@@ -57,27 +54,22 @@ def parse_data_from_io(buf)
  @script_sig = buf.read(@script_sig_length)
  @sequence = buf.read(4) end
 
-def parsed_script
- @parsed_script ||= Bitcoin::Script.new(script_sig) end
+def parsed_script; @parsed_script ||= Bitcoin::Script.new(script_sig) end
 
 def to_payload(script = @script_sig, sequence = @sequence)
- #    a         | String  | arbitrary binary string (null padded, count is width)
- #    V         | Integer | 32-bit unsigned, VAX (little-endian) byte order
+ #    a  | String  | arbitrary binary string (null padded, count is width)
+ #    V  | Integer | 32-bit unsigned, VAX (little-endian) byte order
  [@prev_out_hash, @prev_out_index].pack('a32V') << Protocol.pack_var_int(script.bytesize) \
-                                                << script << (sequence || DEFAULT_SEQUENCE) end
+  << script.force_encoding('ASCII-8BIT') << (sequence.dup.to_s.force_encoding('ASCII-8BIT') || DEFAULT_SEQUENCE.dup.force_encoding('ASCII-8BIT'))
+ rescue => badThing
+  debugger end
+
 def to_hash(_options = {})
  # @prev_out_hash.nil? occurs when trans is coinbase.
  if @prev_out_hash.nil? then trans_h = { 'prev_out' => @script_sig.unpack('H*')[0] }
   else trans_h = { 'prev_out' => { 'hash' => @prev_out_hash.reverse_hth, 'n' => @prev_out_index } } end
  # else coinbase tx https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/primitives/transaction.cpp
  trans_h['scriptSig'] = Bitcoin::Script.new(@script_sig).to_string
- trans_h['sequence'] = @sequence.unpack('V')[0] unless @sequence == "\xff\xff\xff\xff"
- trans_h end
-
-def to_hash_ORIG(_options = {})
- trans_h = { 'prev_out' => { 'hash' => @prev_out_hash.reverse_hth, 'n' => @prev_out_index } }
- if coinbase? then trans_h['coinbase'] = @script_sig.unpack('H*')[0]
- else trans_h['scriptSig'] = Bitcoin::Script.new(@script_sig).to_string end # coinbase tx
  trans_h['sequence'] = @sequence.unpack('V')[0] unless @sequence == "\xff\xff\xff\xff"
  trans_h end
 
@@ -93,17 +85,8 @@ def self.from_hash(input)
  previous_hash         = input['txid']
  txin = TxIn.new([previous_hash].pack('H*').reverse, previous_output_index)
  # What is the string???
- txin.script_sig = input['scriptSig']['hex']    #Script.binary_from_string(input['scriptSig']) !!!???
+ txin.script_sig = input['scriptSig']['hex']    # Script.binary_from_string(input['scriptSig']) !!!???
  txin.sequence =  [input['sequence'] || 0xffffffff].pack('V')
- txin end
-
-def self.from_hash_ORIG(input)
- previous_hash         = input['previous_transaction_hash'] || input['prev_out']['hash']
- previous_output_index = input['output_index'] || input['prev_out']['n']
- txin = TxIn.new([previous_hash].pack('H*').reverse, previous_output_index)
- txin.script_sig = if input['coinbase'] then [input['coinbase']].pack('H*') # interprets the string as hex numbers
-                   else Script.binary_from_string(input['scriptSig'] || input['script']) end
- txin.sequence = [input['sequence'] || 0xffffffff].pack('V')
  txin end
 
 def self.from_hex_hash(hash, index)
@@ -125,6 +108,23 @@ def add_signature_pubkey_script(sig, pubkey_hex)
  self.script = Bitcoin::Script.to_signature_pubkey_script(sig, [pubkey_hex].pack('H*')) end end end end
 
 =begin
+
+def to_hash_ORIG(_options = {})
+ trans_h = { 'prev_out' => { 'hash' => @prev_out_hash.reverse_hth, 'n' => @prev_out_index } }
+ if coinbase? then trans_h['coinbase'] = @script_sig.unpack('H*')[0]
+ else trans_h['scriptSig'] = Bitcoin::Script.new(@script_sig).to_string end # coinbase tx
+ trans_h['sequence'] = @sequence.unpack('V')[0] unless @sequence == "\xff\xff\xff\xff"
+ trans_h end
+
+def self.from_hash_ORIG(input)
+ previous_hash         = input['previous_transaction_hash'] || input['prev_out']['hash']
+ previous_output_index = input['output_index'] || input['prev_out']['n']
+ txin = TxIn.new([previous_hash].pack('H*').reverse, previous_output_index)
+ txin.script_sig = if input['coinbase'] then [input['coinbase']].pack('H*') # interprets the string as hex numbers
+                   else Script.binary_from_string(input['scriptSig'] || input['script']) end
+ txin.sequence = [input['sequence'] || 0xffffffff].pack('V')
+ txin end
+
 Integer       | Array   |
 Directive     | Element | Meaning
 ----------------------------------------------------------------------------

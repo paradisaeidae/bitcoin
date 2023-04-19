@@ -269,9 +269,9 @@ def prev_out(tx, idx = nil, script = nil, prev_value = nil, prev_forkid = nil)
   @prev_out_hash = tx.binary_hash
   @prev_out_script = tx.out[idx].pk_script if idx
  else @prev_out_hash = tx.htb.reverse end
-  @prev_out_script = script if script
-  @prev_out_index = idx if idx
-  @prev_out_value = prev_value if prev_value end
+ @prev_out_script = script if script
+ @prev_out_index = idx if idx
+ @prev_out_value = prev_value if prev_value end
 
 # Index of the output in the #prev_out transaction.
 def prev_out_index(i)
@@ -318,7 +318,7 @@ def txin # Create the txin according to specified values
  @txin end
 
 def multiple_keys?
-  @key.is_a?(Array) end
+ @key.is_a?(Array) end
 
 def has_multiple_keys? # rubocop:disable Naming/PredicateName
  warn '[DEPRECATION] `TxInBuilder.has_multiple_keys?` is deprecated. ' \
@@ -339,48 +339,47 @@ def sign(sig_hash)
 # Create a Bitcoin::Script used by TxOutBuilder#script.
 class ScriptBuilder
 attr_reader :script, :redeem_script
-def initialize
- @type = :address
- @script = nil end
+ def initialize
+  @type = :address
+  @script = nil end
 
-# Script type (:pubkey, :address/hash160, :multisig).
-# Defaults to :address.
-def type(type)
- @type = type.to_sym end
+ # Script type (:pubkey, :address/hash160, :multisig).
+ # Defaults to :address.
+ def type(type)
+  @type = type.to_sym end
 
-# Recipient(s) of the script.
-# Depending on the #type, this should be an address, a hash160 pubkey,
-# or an array of multisig pubkeys.
-def recipient(*data)
- @script, @redeem_script = *Script.send("to_#{@type}_script", *data) end end
+ # Recipient(s) of the script.
+ # Depending on the #type, this should be an address, a hash160 pubkey,
+ # or an array of multisig pubkeys.
+ def recipient(*data)
+  @script, @redeem_script = *Script.send("to_#{@type}_script", *data) end end
 
-# Create a Bitcoin::Protocol::TxOut used by TxBuilder#output.
-#
-#  t.output 12345, address
-#  t.output 12345, p2sh_address, :script_hash
-#
-#  t.output {|o| o.value 12345; o.to address }
-#
-#  t.output do |o|
-#    o.value 12345
-#    o.script {|s| s.recipient address }
-#  end
-#
-#  t.output {|o| o.to "deadbeef", :op_return }
+ # Create a Bitcoin::Protocol::TxOut used by TxBuilder#output.
+ #
+ #  t.output 12345, address
+ #  t.output 12345, p2sh_address, :script_hash
+ #
+ #  t.output {|o| o.value 12345; o.to address }
+ #
+ #  t.output do |o|
+ #    o.value 12345
+ #    o.script {|s| s.recipient address }
+ #  end
+ #
+ #  t.output {|o| o.to "deadbeef", :op_return }
 class TxOutBuilder
 attr_reader :txout
-def initialize
- @txout = P::TxOut.new(0) end
+ def initialize
+  @txout = P::TxOut.new(0) end
 
-def value(value) # Set output value (in base units / "satoshis")
- @txout.value = value end
+ def value(value) # Set output value (in base units / "satoshis")
+  @txout.value = value end
 
-def to(recipient, type = :address) # Set recipient address and script type (defaults to :address).
- @txout.pk_script, @txout.redeem_script = *Bitcoin::Script.send(
-   "to_#{type}_script", *recipient ) end
+ def to(recipient, type = :address) # Set recipient address and script type (defaults to :address).
+  @txout.pk_script, @txout.redeem_script = *Bitcoin::Script.send( "to_#{type}_script", *recipient ) end
 
-def script # Add a script to the output (see ScriptBuilder).
- c = ScriptBuilder.new
- yield c
- @txout.pk_script = c.script
- @txout.redeem_script = c.redeem_script end end end end
+ def script # Add a script to the output (see ScriptBuilder).
+  c = ScriptBuilder.new
+  yield c
+  @txout.pk_script = c.script
+  @txout.redeem_script = c.redeem_script end end end end

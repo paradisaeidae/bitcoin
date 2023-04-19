@@ -1,7 +1,6 @@
 require_relative '../bitcoin-sv'
-require_relative './opcodes'
+require_relative 'opcodes'
 class Bitcoin::Script
-
 # create a new script. +bytes+ is typically input_script + output_script
 def initialize(input_script, previous_output_script=nil)
  @raw_byte_sizes = [input_script.bytesize, previous_output_script ? previous_output_script.bytesize : 0]
@@ -18,7 +17,9 @@ def initialize(input_script, previous_output_script=nil)
   @chunks += parse(@previous_output_script) end
  @stack, @stack_alt, @exec_stack = [], [], []
  @last_codeseparator_index = 0
- @do_exec = truee end
+ @do_exec = true
+ rescue => badThing
+  debugger end
 
 class ::String
  attr_accessor :bitcoin_pushdata
@@ -35,55 +36,55 @@ def parse(bytes, offset=0) # parse raw script
    if len == 1 && tmp && tmp <= 22
     chunks.last.bitcoin_pushdata = OP_PUSHDATA0
     chunks.last.bitcoin_pushdata_length = len
-   else raise "invalid OP_PUSHDATA0" if len != chunks.last.bytesize end
+   else raise "invalid OP_PUSHDATA0 len != chunks.last.bytesize" if len != chunks.last.bytesize end
   elsif (opcode == OP_PUSHDATA1)
    len = program.shift(1)[0]
    chunks << program.shift(len).pack("C*")
    unless len > OP_PUSHDATA1 && len <= 0xff
     chunks.last.bitcoin_pushdata = OP_PUSHDATA1
     chunks.last.bitcoin_pushdata_length = len
-   else raise "invalid OP_PUSHDATA1" if len != chunks.last.bytesize end
+   else raise "invalid OP_PUSHDATA1 len != chunks.last.bytesize" if len != chunks.last.bytesize end
   elsif (opcode == OP_PUSHDATA2)
    len = program.shift(2).pack("C*").unpack("v")[0]
    chunks << program.shift(len).pack("C*")
    unless len > 0xff && len <= 0xffff
     chunks.last.bitcoin_pushdata = OP_PUSHDATA2
     chunks.last.bitcoin_pushdata_length = len
-   else raise "invalid OP_PUSHDATA2" if len != chunks.last.bytesize end
+   else raise "invalid OP_PUSHDATA2 len != chunks.last.bytesize" if len != chunks.last.bytesize end
   elsif (opcode == OP_PUSHDATA4)
    len = program.shift(4).pack("C*").unpack("V")[0]
    chunks << program.shift(len).pack("C*")
    unless len > 0xffff # && len <= 0xffffffff
     chunks.last.bitcoin_pushdata = OP_PUSHDATA4
     chunks.last.bitcoin_pushdata_length = len
-   else raise "invalid OP_PUSHDATA4" if len != chunks.last.bytesize end
+   else raise "invalid OP_PUSHDATA4 len != chunks.last.bytesize" if len != chunks.last.bytesize end
   else chunks << opcode end end
  chunks
- rescue => ex
+ rescue => badThing
   # bail out! #run returns false but serialization roundtrips still create the right payload.
-  chunks.pop if ex.message.include?("invalid OP_PUSHDATA")
+  puts badThing
+  chunks.pop if badThing.message.include?("invalid OP_PUSHDATA")
   @parse_invalid = true
   c = bytes.unpack("C*").pack("C*")
   c.bitcoin_pushdata = OP_PUSHDATA_INVALID
   c.bitcoin_pushdata_length = c.bytesize
-  chunks << c end
+  chunks << c end #   raise badThing 
 
 def to_string(chunks=nil) # string representation of the script
  string = ""
- (chunks || @chunks).each.with_index{|i,idx|
+ (chunks || @chunks).each.with_index{ |i, idx |
   string << " " unless idx == 0
   string << case i
   when Integer
    if opcode = OPCODES_PARSE_BINARY[i] then opcode
    else "(opcode-#{i})" end
   when String
-   if i.bitcoin_pushdata
-    "#{i.bitcoin_pushdata}:#{i.bitcoin_pushdata_length}:".force_encoding('binary') + i.unpack("H*")[0]
+   if i.bitcoin_pushdata then "#{i.bitcoin_pushdata}:#{i.bitcoin_pushdata_length}:".force_encoding('binary') + i.unpack("H*")[0]
    else i.unpack("H*")[0] end end }
  string end
 
 def to_binary(chunks=nil)
- (chunks || @chunks).map{|chunk|
+ (chunks || @chunks).map{ |chunk|
   case chunk
   when Integer; [chunk].pack("C*")
   when String; self.class.pack_pushdata(chunk) end
@@ -115,12 +116,10 @@ def subscript_codeseparator(separator_index)
   process_separator_index += 1 if chunk == OP_CODESEPARATOR and process_separator_index < separator_index }
  to_binary(buf) end
 
-# Adds opcode (OP_0, OP_1, ... OP_CHECKSIG etc.)
-# Returns self.
+# Adds opcode (OP_0, OP_1, ... OP_CHECKSIG etc.) Returns self.
 def append_opcode(opcode)
  raise "Opcode should be an integer" if !opcode.is_a?(Integer)
- if opcode >= OP_0 && opcode <= 0xff
-  @chunks << opcode
+ if opcode >= OP_0 && opcode <= 0xff then @chunks << opcode
  else raise "Opcode should be within [0x00, 0xff]" end 
  self end
 
@@ -157,7 +156,7 @@ def self.pack_pushdata(data)
   [OP_PUSHDATA2, size].pack("Cv")
   #elsif size <= 0xffffffff
   else [OP_PUSHDATA4, size].pack("CV") end
-  head + data end end
+ head + data end end
 
 def self.pack_pushdata_align(pushdata, len, data)
  case pushdata
@@ -173,17 +172,15 @@ def self.pack_pushdata_align(pushdata, len, data)
   [len].pack("C") + data end end
 
 def self.from_string(input_script, previous_output_script=nil) # script object of a string representation
- if previous_output_script
-  new(binary_from_string(input_script), binary_from_string(previous_output_script))
+ if previous_output_script then new(binary_from_string(input_script), binary_from_string(previous_output_script))
  else new(binary_from_string(input_script)) end end
 
 class ScriptOpcodeError < StandardError; end
 
 def self.binary_from_string(script_string) # raw script binary of a string representation
  buf = ""
- script_string.split(" ").each{|i|
-  i = if opcode = OPCODES_PARSE_STRING[i]
-   opcode
+ script_string.split(" ").each{ |i|
+  i = if opcode = OPCODES_PARSE_STRING[i] then opcode
   else
    case i
    when /OP_PUSHDATA/             # skip
@@ -209,13 +206,13 @@ def invalid?
 # run the script. +check_callback+ is called for OP_CHECKSIG operations
 def run(block_timestamp=Time.now.to_i, opts={}, &check_callback)
  return false if @parse_invalid
- @script_invalid = true if @raw_byte_sizes.any?{|size| size > 10_000 }
+ @script_invalid = true if @raw_byte_sizes.any?{ | size | size > 10_000 }
  @last_codeseparator_index = 0 # 1333238400
  @debug = []
- @chunks.each.with_index{|chunk,idx|
+ @chunks.each.with_index{| chunk, idx |
   break if invalid?
   @chunk_last_index = idx
-  @debug << @stack.map{|i| i.unpack("H*") rescue i}
+  @debug << @stack.map{ |i| i.unpack("H*") rescue i }
   @do_exec = @exec_stack.count(false) == 0 ? true : false
   #p [@stack, @do_exec]
   case chunk
@@ -249,7 +246,7 @@ def run(block_timestamp=Time.now.to_i, opts={}, &check_callback)
     @debug << "PUSH DATA #{chunk.unpack("H*")[0]}"
     @stack << chunk
    else @debug.pop end end }
- @debug << @stack.map{|i| i.unpack("H*") rescue i } #if @do_exec
+ @debug << @stack.map{ |i| i.unpack("H*") rescue i } #if @do_exec
  if @script_invalid
   @stack << 0
   @debug << "INVALID TRANSACTION" end
@@ -274,7 +271,7 @@ def is_pubkey? # is this a pubkey script
 alias :is_send_to_ip? :is_pubkey?
 
 def is_hash160? # is this a hash160 (address) script
- return false  if @chunks.size != 5
+ return false if @chunks.size != 5
  (@chunks[0..1] + @chunks[-2..-1]) ==
   [OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG] &&
   @chunks[2].is_a?(String) && @chunks[2].bytesize == 20 end
@@ -321,13 +318,14 @@ def check_pushes(push_only=true, canonical_only=false, buf)
    return false if canonical_only && len <= 0xffff
    program.shift(len) end end
  true
-rescue
- # catch parsing errors
- false end
+ rescue => badThing
+  puts badThing.inspect
+  # catch parsing errors
+  false end
 
 # get type of this tx
 def type
- if is_hash160?;                 :hash160
+ if    is_hash160?;              :hash160
  elsif is_pubkey?;               :pubkey
  elsif is_multisig?;             :multisig
  elsif is_op_return?;            :op_return
@@ -394,9 +392,9 @@ def self.to_hash160_script(hash160)
 
 # generate p2wpkh tx for given +address+. returns a raw binary script of the form:
 # 0 <hash160>
-def self.to_witness_hash160_script(hash160) # DEPRECATE
- return nil  unless hash160
- to_witness_script(0, hash160) end
+#def self.to_witness_hash160_script(hash160) # DEPRECATE
+# return nil  unless hash160
+# to_witness_script(0, hash160) end
 
 # generate hash160 depending on the type of the given +address+.
 # see #to_hash160_script
@@ -416,32 +414,30 @@ def self.to_multisig_script(m, *pubkeys)
  n = pubkeys.size > 16 ?   pack_pushdata([pubkeys.size].pack("C"))   : [80 + pubs.size].pack("C")
  [ m, *pubs, n, [OP_CHECKMULTISIG].pack("C")].join end
 
-# generate OP_RETURN output script with given data. returns a raw binary script of the form:
-#  OP_RETURN <data>
+# generate OP_RETURN output script with given data. returns a raw binary script of the form: OP_RETURN <data>
 def self.to_op_return_script(data = nil)
  buf = [ OP_RETURN ].pack("C")
  return buf unless data
  return buf + pack_pushdata( [data].pack("H*") ) end
 
 # generate input script sig spending a pubkey output with given +signature+ and +pubkey+.
-# returns a raw binary script sig of the form:
-#  <signature> [<pubkey>]
+# returns a raw binary script sig of the form:  <signature> [<pubkey>]
 def self.to_pubkey_script_sig(signature, pubkey, hash_type = SIGHASH_TYPE[:all])
  buf = pack_pushdata(signature + [hash_type].pack("C"))
  return buf unless pubkey
  expected_size = case pubkey[0]
-  when "\x04"; 65
+  when "\x04";         65
   when "\x02", "\x03"; 33 end
- raise "pubkey is not in binary form" if !expected_size || pubkey.bytesize != expected_size
- return buf + pack_pushdata(pubkey) end
+ raise "pubkey is not in escaped hex, binary form: #{pubkey.inspect}" if !expected_size || pubkey.bytesize != expected_size
+ return buf + pack_pushdata(pubkey) end # returns a raw binary script sig of the form:  <signature> [<pubkey>]
 
 # alias for #to_pubkey_script_sig
 def self.to_signature_pubkey_script(*a)
+ puts 'DEPRECATED alias: to_signature_pubkey_script'
  to_pubkey_script_sig(*a) end
 
 # generate input script sig spending a multisig output script.
-# returns a raw binary script sig of the form:
-#  OP_0 <sig> [<sig> ...]
+# returns a raw binary script sig of the form:  OP_0 <sig> [<sig> ...]
 def self.to_multisig_script_sig(*sigs)
  hash_type = sigs.last.is_a?(Numeric) ? sigs.pop : SIGHASH_TYPE[:all]
  partial_script = [OP_0].pack("C*")
@@ -458,8 +454,7 @@ def self.add_sig_to_multisig_script_sig(sig, script_sig, hash_type = SIGHASH_TYP
  script_sig.insert(offset, pack_pushdata(signature)) end
 
 # generate input script sig spending a multisig output script.
-# returns a raw binary script sig of the form:
-#  OP_0 <sig> [<sig> ...] <redeem_script>
+# returns a raw binary script sig of the form: OP_0 <sig> [<sig> ...] <redeem_script>
 def self.to_multisig_script_sig(redeem_script, *sigs)
  to_multisig_script_sig(*sigs.flatten) + pack_pushdata(redeem_script) end
 
@@ -470,12 +465,12 @@ def self.sort_multisig_signatures script_sig, sig_hash
  redeem_script = new(script.chunks[-1])
  pubkeys = redeem_script.get_multisig_pubkeys
  # find the pubkey for each signature by trying to verify it
- sigs = Hash[script.chunks[1...-1].map.with_index do |sig, idx|
-  pubkey = pubkeys.map {|key|
+ sigs = Hash[ script.chunks[1...-1].map.with_index do |sig, idx|
+  pubkey = pubkeys.map { |key|
    Bitcoin::Key.new(nil, key.hth).verify(sig_hash, sig) ? key : nil }.compact.first
   raise "Key for signature ##{idx} not found in redeem script!"  unless pubkey
   [pubkey, sig]
- end]
+ end ]
  [OP_0].pack("C*") + pubkeys.map {|k| sigs[k] ? pack_pushdata(sigs[k]) : nil }.join +
   pack_pushdata(redeem_script.raw) end
 
@@ -538,8 +533,7 @@ def cast_to_bool(buf)
  buf = cast_to_string(buf).unpack("C*")
  size = buf.size
  buf.each.with_index{|byte,index|
-  if byte != 0
-   # Can be negative zero
+  if byte != 0   # Can be negative zero
    if (index == (size-1)) && byte == 0x80 then return false
    else return true end end }
  return false end
@@ -565,15 +559,14 @@ def op_checksig(check_callback, opts={})
  subscript = sighash_subscript(drop_sigs, opts)
  if check_callback == nil # for tests
   @stack << 1
- else # real signature check callback
-  @stack << ((check_callback.call(pubkey, sig, hash_type, subscript) == true) ? 1 : 0) end end
+ else @stack << ((check_callback.call(pubkey, sig, hash_type, subscript) == true) ? 1 : 0) end end # real signature check callback
 
 def sighash_subscript(drop_sigs, opts = {})
  if opts[:fork_id]
   drop_sigs.reject! do |signature|
    if signature && signature.size > 0
-     _, hash_type = parse_sig(signature) # The underscore adds as a placeholder for the variable matching inside Ruby. It is just as greedy as any named variable, but as it is not named, you cannot access it later on. 
-     (hash_type&SIGHASH_TYPE[:forkid]) != 0 end end end
+    _, hash_type = parse_sig(signature) # The underscore adds as a placeholder for the variable matching inside Ruby. It is just as greedy as any named variable, but as it is not named, you cannot access it later on. 
+    (hash_type&SIGHASH_TYPE[:forkid]) != 0 end end end
  if inner_p2sh? && @inner_script_code
   ::Bitcoin::Script.new(@inner_script_code).to_binary_without_signatures(drop_sigs)
  else to_binary_without_signatures(drop_sigs) end end
@@ -590,8 +583,7 @@ def self.is_compressed_or_uncompressed_pub_key?(pubkey)
  when "\x02", "\x03"
   return false if pubkey.bytesize != 33 # "Non-canonical public key: invalid length for compressed key"
  else
-  return false # "Non-canonical public key: compressed nor uncompressed" 
- end
+  return false end # "Non-canonical public key: compressed nor uncompressed" 
  true end
 
 # Loosely matches CheckSignatureEncoding()
@@ -609,29 +601,29 @@ def self.check_signature_encoding?(sig, opts={})
 
 # Loosely correlates with IsDERSignature() from interpreter.cpp
 def self.is_der_signature?(sig)
- return false if sig.bytesize < 9 # Non-canonical signature: too short
+ return false if sig.bytesize < 9  # Non-canonical signature: too short
  return false if sig.bytesize > 73 # Non-canonical signature: too long
  s = sig.unpack("C*")
- return false if s[0] != 0x30 # Non-canonical signature: wrong type
+ return false if s[0] != 0x30     # Non-canonical signature: wrong type
  return false if s[1] != s.size-3 # Non-canonical signature: wrong length marker
  length_r = s[3]
  return false if (5 + length_r) >= s.size # Non-canonical signature: S length misplaced
  length_s = s[5+length_r]
  return false if (length_r + length_s + 7) != s.size # Non-canonical signature: R+S length mismatch
- return false if s[2] != 0x02 # Non-canonical signature: R value type mismatch
+ return false if s[2] != 0x02  # Non-canonical signature: R value type mismatch
  return false if length_r == 0 # Non-canonical signature: R length is zero
  r_val = s.slice(4, length_r)
  return false if r_val[0] & 0x80 != 0 # Non-canonical signature: R value negative
  return false if length_r > 1 && (r_val[0] == 0x00) && !(r_val[1] & 0x80 != 0) # Non-canonical signature: R value excessively padded
  s_val = s.slice(6 + length_r, length_s)
  return false if s[6 + length_r - 2] != 0x02 # Non-canonical signature: S value type mismatch
- return false if length_s == 0 # Non-canonical signature: S length is zero
- return false if (s_val[0] & 0x80) != 0 # Non-canonical signature: S value negative
+ return false if length_s == 0               # Non-canonical signature: S length is zero
+ return false if (s_val[0] & 0x80) != 0      # Non-canonical signature: S value negative
  return false if length_s > 1 && (s_val[0] == 0x00) && !(s_val[1] & 0x80) # Non-canonical signature: S value excessively padded
  true end
 
 def self.compare_big_endian(c1, c2) # Compares two arrays of bytes
- c1, c2 = c1.dup, c2.dup # Clone the arrays
+ c1, c2 = c1.dup, c2.dup            # Clone the arrays
  while c1.size > c2.size
   return 1 if c1.shift > 0 end
  while c2.size > c1.size

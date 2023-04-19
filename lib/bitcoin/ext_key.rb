@@ -63,8 +63,7 @@ def derive(number)
  new_key.depth = depth + 1
  new_key.number = number
  new_key.parent_fingerprint = fingerprint
- if number > (2**31 - 1)
-  data = [0x00].pack('C') << priv_key.priv.htb << [number].pack('N')
+ if number > (2**31 - 1) then data = [0x00].pack('C') << priv_key.priv.htb << [number].pack('N')
  else data = priv_key.pub.htb << [number].pack('N') end
  l = Bitcoin.hmac_sha512(chain_code, data)
  left = OpenSSL::BN.from_hex(l[0..31].bth).to_i
@@ -88,13 +87,13 @@ def self.from_base58(address)
  key.priv_key = Bitcoin::Key.new(data.read(32).bth)
  key end end
 
-BIP-32 Extended public key
-ass ExtPubkey
-attr_accessor :depth
-attr_accessor :number
-attr_accessor :chain_code
-attr_accessor :pub_key
-attr_accessor :parent_fingerprint
+  # BIP-32 Extended public key
+ class ExtPubkey
+ attr_accessor :depth
+ attr_accessor :number
+ attr_accessor :chain_code
+ attr_accessor :pub_key
+ attr_accessor :parent_fingerprint
 
 def to_payload # serialize extended pubkey
  Bitcoin.network[:extended_pubkey_version].htb << [depth].pack('C') << parent_fingerprint.htb << [number].pack('N') << chain_code << pub.htb end

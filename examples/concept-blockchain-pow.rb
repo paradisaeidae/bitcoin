@@ -12,11 +12,9 @@ def do_work(data, target, nonce=0)
  until found
   d = data + [nonce].pack("I")
   h = Digest::SHA256.hexdigest( Digest::SHA256.digest( d ) ).to_i(16)
- 
   if h <= target
    found = [h.to_s(16).rjust(64, '0'), nonce]
    break end
- 
   nonce+=1 end
  found end
 

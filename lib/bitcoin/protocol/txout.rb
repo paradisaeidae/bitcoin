@@ -1,7 +1,5 @@
 # encoding: ascii-8bit
-
-module Bitcoin
-module Protocol # TxOut section of https://en.bitcoin.it/wiki/Protocol_documentation#tx
+module Bitcoin;module Protocol # TxOut section of https://en.bitcoin.it/wiki/Protocol_documentation#tx
 class TxOut
 attr_accessor :value, :redeem_script      # output value (in base units; "satoshi")
        # p2sh redeem script (optional, not included in the serialized binary format)
