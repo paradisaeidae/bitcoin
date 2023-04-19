@@ -28,7 +28,6 @@ additional dependencies which are not specified in the gemspec. The core require
 intentionally kept to a minimum, so nobody has to install unneeded dependencies.
 
 * +rspec+ to run the specs
-* +scrypt+ to use a much faster scrypt hash implementation for Litecoin
 
 If you would like to install using Bundler, put it in your Gemfile and run bundle install
  gem 'bitcoin-sv', git: 'https://github.com/paradisaeidae/bitcoin-sv', branch: 'master', require: 'bitcoin-sv'
@@ -180,7 +179,9 @@ To run specs for changes that monkey patch significant functionality, you
 should run the specs individually.
 
 == Development
-
+  
+Previous authors are acknowledged. Any comments or interactions are welcome.  
+  
 Any help or feedback is greatly appreciated! From getting knee-deep into elliptic-curve acrobatics,
 to cleaning up high-level naming conventions, there is something for everyone to do.
 Even if you are completely lost, just pointing out what is unclear helps a lot!
