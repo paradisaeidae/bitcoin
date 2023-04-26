@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 require 'spec_helper'
 describe Bitcoin::Secp256k1 do
-  let(:fixture_text) { 'bitcoin-sv-test-data' }
+  let(:fixture_text) { 'bitcoin-test-data' }
 
   describe '#generate_key_pair' do
     it 'generates a compressed key pair' do

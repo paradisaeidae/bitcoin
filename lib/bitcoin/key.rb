@@ -1,45 +1,64 @@
+module ::OpenSSL
+class BN
+def self.from_hex(hex); new(hex, 16) end
+def to_hex; to_i.to_s(16) end
+def to_mpi; to_s(0).unpack("C*") end end
+class EC < PKey
+def private_key_hex; private_key.to_hex.rjust(64, '0') end # Pad with zeros
+def public_key_hex;  public_key.to_hex.rjust(130, '0') end
+def pubkey_compressed?; public_key.group.point_conversion_form == :compressed end end
+
+class Point < PKey::EC
+def self.from_hex(group, hex); new(group, BN.from_hex(hex)) end
+def to_hex; to_bn.to_hex end
+def self.bn2mpi(hex); BN.from_hex(hex).to_mpi end
+def ec_add(point); self.class.new(group, OpenSSL::BN.from_hex(OpenSSL_EC.ec_add(self, point))) end end end
 module Bitcoin
 class Key # Elliptic Curve key as used in bitcoin.
-attr_reader :key, :p_key_bn
+attr_reader :key
 MIN_PRIV_KEY_MOD_ORDER = 0x01
 # Order of secp256k1's generator minus 1.
 MAX_PRIV_KEY_MOD_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140
+
+# Create a new key with given +privkey+ and +pubkey+.
+# Bitcoin::Key.new
+# Bitcoin::Key.new(privkey)
+# Bitcoin::Key.new(nil, pubkey)
+def initialize(priv_64 = nil, pubkey = nil, opts={compressed: true}) # Currently assumes a wif private key.
+ compressed = opts.is_a?(Hash) ? opts.fetch(:compressed, true) : opts
+ wif_key = OpenSSL::PKey::EC::WIF.new(priv_64)
+ debugger # "-----BEGIN EC PRIVATE KEY-----\n3bcd23ccab9a6134231608d3066f92a383120544a7cda3a1055559542c4176ce\n-----END EC PRIVATE KEY-----\n"
+ if priv_64 then @key = OpenSSL::PKey.read wif_key.to_pem( priv_64 )
+ else @key = Bitcoin.bitcoin_elliptic_curve end # secp256k1
+ @pubkey_compressed = pubkey ? self.class.is_compressed_pubkey?(pubkey) : compressed
+ # set_priv(priv_64) if priv_64
+ regenerate_pubkey end
+ # set_pub(pubkey, @pubkey_compressed) if pubkey end # pubkey should be regenerated suspect when setting??
 
 # Generate a new keypair.
 def self.generate(opts={compressed: true}) # Bitcoin::Key.generate
  k = new(nil, nil, opts); k.generate; k end
 
 # Import private key from base58 fromat as described in
-# https://en.bitcoin.it/wiki/Private_key#Base_58_Wallet_Import_format and
+# https://en.bitcoin.it/wiki/Private_key#Base_58_Wallet_Import_format (wif) and
 # https://en.bitcoin.it/wiki/Base58Check_encoding#Encoding_a_private_key.
 # See also #to_base58
-def self.from_base58(str)
- hex = Bitcoin.decode_base58(str)
+def self.from_base58(wif) # Bare wif, no -----PRIVATE EC....
+ hex = Bitcoin.decode_base58(wif)
  compressed = hex.size == 76
  version, key, flag, checksum = hex.unpack("a2a64a#{compressed ? 2 : 0}a8")
  raise "Invalid version"   unless version == Bitcoin.network[:privkey_version]
  raise "Invalid checksum"  unless Bitcoin.checksum(version + key + flag) == checksum
  key = new(key, nil, compressed) end
 
-def ==(other)
- self.priv == other.priv end
-
-# Create a new key with given +privkey+ and +pubkey+.
-# Bitcoin::Key.new
-# Bitcoin::Key.new(privkey)
-# Bitcoin::Key.new(nil, pubkey)
-def initialize(privkey = nil, pubkey = nil, opts={compressed: true})
- compressed = opts.is_a?(Hash) ? opts.fetch(:compressed, true) : opts
- @key = Bitcoin.bitcoin_elliptic_curve
- @pubkey_compressed = pubkey ? self.class.is_compressed_pubkey?(pubkey) : compressed
- set_priv(privkey) if privkey
- set_pub(pubkey, @pubkey_compressed)  if pubkey end
-
 def generate # Generate new priv/pub key.
  @key.generate_key end
 
+def ==(other)
+ self.priv == other.priv end
+
 def priv # Get the private key (in hex).
- return nil  unless @key.private_key
+ return nil unless @key.private_key
  @key.private_key.to_hex.rjust(64, '0') end
 
 # Set the private key to +priv+ (in hex).
@@ -193,10 +212,20 @@ def regenerate_pubkey # Regenerate public key from the private key.
  return nil unless @key.private_key
  set_pub(Bitcoin::OpenSSL_EC.regenerate_key(priv)[1], @pubkey_compressed) end
 
-def set_priv(priv) # Set +priv+ as the new private key (converting from hex).
- value = priv.to_i(16)
+def set_priv(priv_hex) # Set +priv+ as the new private key (converting from hex).
+ priv_64 = Bitcoin.hex_to_base64_digest priv_hex
+ # convert to base64 then PEM to remake new key, regen public.
+ value = priv_hex.to_i(16)
  raise 'private key is not on curve' unless MIN_PRIV_KEY_MOD_ORDER <= value && value <= MAX_PRIV_KEY_MOD_ORDER
- @p_key_bn = OpenSSL::BN.from_hex(priv) end
+ openssl_version_string = OpenSSL::OPENSSL_VERSION
+ openssl_version_number = openssl_version_string.scan(/\d+\.\d+\.\d+/).first
+ if openssl_version_number.to_i >= 3 then
+  if !OpenSSL::PKey.respond_to?(:read) then raise 'Found OpenSSL with no PKey.read function!' end end
+ @key = OpenSSL::PKey.read ::OpenSSL::PKey::EC.to_pem( priv_64 )
+ rescue => badThing
+  puts badThing.inspect
+  raise 'Issue setting priv'
+ end
  #@key.private_key = OpenSSL::BN.from_hex(priv)
 
 def set_pub(pub, compressed = nil) # Set +pub+ as the new public key (converting from hex).

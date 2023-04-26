@@ -1,6 +1,6 @@
 gem 'faraday', '1.8.0'  #'2.5.2',  2.2.0 has issue with uninitialized constant Faraday::Request::Retry (NameError)
 ['nutrun-string', 'certified',  'faraday', 'json',  'ffi', 'rjr/nodes/tcp', \
- 'digest/sha2', 'bigdecimal', 'bitcoin-sv', 'bitcoin-client', 'faraday/detailed_logger', 'pry'].each {| ment | require ment }
+ 'digest/sha2', 'bigdecimal', 'bitcoin', 'bitcoin-client', 'faraday/detailed_logger', 'pry'].each {| ment | require ment }
 require 'stringio'
 require '/k0.io/2007/Tests/BSV/payment_utils'
 

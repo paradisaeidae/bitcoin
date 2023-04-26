@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-puts require_relative '../lib/bitcoin-sv'
+puts require_relative '../lib/bitcoin'
 
 include Bitcoin
 include Bitcoin::Util

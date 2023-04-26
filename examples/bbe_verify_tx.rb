@@ -4,7 +4,7 @@
 #  examples/bbe_verify_tx.rb f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16
 # see Bitcoin::P::Tx and Bitcoin::Script.
 
-require_relative '../../lib/bitcoin-sv'
+require_relative '../../lib/bitcoin'
 require 'open-uri'
 
 tx_hash = ARGV[0]

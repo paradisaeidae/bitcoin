@@ -55,7 +55,7 @@ task :build_libsecp256k1, [:force] do |_, args|
 desc 'Generate RDoc documentation'
 task :rdoc do
   `rm -rf rdoc`
-  system("rdoc -a -A -H -t 'bitcoin-sv RDoc' -W 'https://github.com/paradisaeidae/bitcoin-sv/tree/master/%s' -o rdoc -m README.rdoc examples/ doc/ lib/ README.rdoc COPYING")
+  system("rdoc -a -A -H -t 'bitcoin RDoc' -W 'https://github.com/paradisaeidae/bitcoin/tree/master/%s' -o rdoc -m README.rdoc examples/ doc/ lib/ README.rdoc COPYING")
 end
 
 desc 'Generate test coverage report'

@@ -112,7 +112,8 @@ def encode_base58(hex)
  ("1"*leading_zero_bytes) + int_to_base58( hex.to_i(16) ) end
 
 def decode_base58(base58_val)
- s = base58_to_int(base58_val).to_s(16); s = (s.bytesize.odd? ? '0'+s : s)
+ s = base58_to_int(base58_val).to_s(16)
+ s = (s.bytesize.odd? ? '0' + s : s)
  s = '' if s == '00'
  leading_zero_bytes = (base58_val.match(/^([1]+)/) ? $1 : '').size
  s = ("00"*leading_zero_bytes) + s  if leading_zero_bytes > 0
@@ -225,9 +226,44 @@ def verify_signature(hash, signature, public_key)
  rescue OpenSSL::PKey::ECError, OpenSSL::PKey::EC::Point::Error, OpenSSL::BNError
  false end
 
-def open_key(private_key, public_key=nil)
- key = bitcoin_elliptic_curve
- key.private_key = ::OpenSSL::BN.from_hex(private_key)
+def base64_to_hex(base64_string)
+ base64_string.scan(/.{4}/).map do |b| b.unpack('m0').first.unpack('H') end.join end
+
+def hex_to_base64_digest(hexdigest)
+ [[hexdigest].pack("H*")].pack("m0") end
+
+def open_key(private_key_hex, public_key=nil) # https://www.rfc-editor.org/rfc/rfc5915pem
+ # openssl ecparam -out ecc_private_key.key -name secp521k1 -genkey
+ # openssl genpkey   -outform PEM
+ # Nope: OpenSSL::PKey.read('-----BEGIN EC PRIVATE KEY-----MIGEAgEAMBAGByqGSM49AgEGBSuBBAAKBG0wawIBAQQgBm8tETo+73YLviIxpxMyaSu3HQHrHN+cttn7Pn1KeQGhRANCAAT/ok8McP+7yJJBDSwA4PaWZcADk5HPTq1uQaiYdw699zA5k+9vJ2C4CjoXpMxbdFo1zCtiolei8mAZ7Wiy27Lq-----END EC PRIVATE KEY-----')
+ # Yep:  OpenSSL::PKey.read("-----BEGIN EC PRIVATE KEY-----\nMIGEAgEAMBAGByqGSM49AgEGBSuBBAAKBG0wawIBAQQgBm8tETo+73YLviIxpxMyaSu3HQHrHN+cttn7Pn1KeQGhRANCAAT/ok8McP+7yJJBDSwA4PaWZcADk5HPTq1uQaiYdw699zA5k+9vJ2C4CjoXpMxbdFo1zCtiolei8mAZ7Wiy27Lq\n-----END EC PRIVATE KEY-----\n')
+ begin
+ openssl_version_string = OpenSSL::OPENSSL_VERSION
+ openssl_version_number = openssl_version_string.scan(/\d+\.\d+\.\d+/).first
+
+ if openssl_version_number.to_i >= 3 then
+  if !OpenSSL::PKey.respond_to?(:read) then raise 'Found OpenSSL with no PKey.read function!' end
+  if private_key_hex.match(/-----BEGIN/) then raise 'Found BEGIN in key.' end
+  private_key_bytes = [private_key_hex].pack('H*')
+  private_key_base64 = Base64.encode64(private_key_bytes).chomp
+  pem = "-----BEGIN EC PRIVATE KEY-----\n" << private_key_base64 << "\n-----END EC PRIVATE KEY-----\n"
+  debugger
+  private_key = OpenSSL::PKey.read(pem)
+  pk_bin = OpenSSL::BN.new(private_key_hex, 16)
+  curve_name = private_key.group.curve_name
+  public_key = private_key.public_key
+  group = private_key.group
+  new_key = OpenSSL::PKey::EC.new(group)
+  new_key.copy_key_material(private_key)
+  new_key.set_public_key(public_key)
+  #ec_key =  OpenSSL::PKey::EC.new('secp256k1', private_key_hex)  #bitcoin_elliptic_curve
+  return new_key end
+  rescue OpenSSL::PKey::PKeyError => badThing
+   puts 'Pbbly unsupported due to format error.' << badThing.inspect
+   raise 'Issue with reading private key' end
+  
+
+ key.private_key = ::OpenSSL::BN.from_hex(private_key_hex)
  public_key = regenerate_public_key(private_key) unless public_key
  key.public_key = ::OpenSSL::PKey::EC::Point.from_hex(key.group, public_key)
  key end
@@ -336,41 +372,8 @@ def reverse_hth; reverse.hth; end end
 class ::String
 include Bitcoin::BinaryExtensions end
 
-module ::OpenSSL
-class BN
-def self.from_hex(hex)
- new(hex, 16) end
-
-def to_hex
- to_i.to_s(16) end
-
-def to_mpi; to_s(0).unpack("C*") end end
-
-class PKey::EC
-def private_key_hex
- debugger
- private_key.to_hex.rjust(64, '0') end
-
-def public_key_hex
- public_key.to_hex.rjust(130, '0') end
-
-def pubkey_compressed?
- public_key.group.point_conversion_form == :compressed; end end
-
-class PKey::EC::Point
-def self.from_hex(group, hex)
- new(group, BN.from_hex(hex)) end
-
-def to_hex
- to_bn.to_hex end
-
-def self.bn2mpi(hex)
- BN.from_hex(hex).to_mpi end
-
-def ec_add(point); self.class.new(group, OpenSSL::BN.from_hex(OpenSSL_EC.ec_add(self, point))) end end end
-
-autoload :OpenSSL_EC, "bitcoin/ffi/openssl"
-autoload :Secp256k1, "bitcoin/ffi/secp256k1"
+autoload :OpenSSL_EC,       "bitcoin/ffi/openssl"
+autoload :Secp256k1,        "bitcoin/ffi/secp256k1"
 autoload :BitcoinConsensus, "bitcoin/ffi/bitcoinconsensus"
 @network = []
 

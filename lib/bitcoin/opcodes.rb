@@ -41,7 +41,8 @@ implement “oracle” services such as those that make decentralized prediction
 # TODO: validate signature order
 # TODO: take global opcode count
 
-class Bitcoin::Script
+#class Bitcoin::Script
+module Opcodes
 OP_0           = 0
 OP_FALSE       = 0
 OP_1           = 81
@@ -477,6 +478,21 @@ def op_codeseparator
  @codehash_start = @chunks.size - @chunks.reverse.index(OP_CODESEPARATOR)
  @last_codeseparator_index = @chunk_last_index end
 
+ # do a CHECKSIG operation on the current stack,
+ # asking +check_callback+ to do the actual signature verification.
+ # This is used by Protocol::Tx#verify_input_signature
+ def op_checksig(check_callback, opts={})
+  return invalid if @stack.size < 2
+  pubkey = cast_to_string(@stack.pop)
+  return (@stack << 0) unless Bitcoin::Script.check_pubkey_encoding?(pubkey, opts)
+  drop_sigs      = [ cast_to_string(@stack[-1]) ]
+  signature = cast_to_string(@stack.pop)
+  return invalid unless Bitcoin::Script.check_signature_encoding?(signature, opts)
+  return (@stack << 0) if signature == ""
+  sig, hash_type = parse_sig(signature)
+  subscript = sighash_subscript(drop_sigs, opts)
+  if check_callback == nil then @stack << 1 # for tests
+  else @stack << ((check_callback.call(pubkey, sig, hash_type, subscript) == true) ? 1 : 0) end end # real signature check callback
 
 # Same as OP_CHECKSIG, but OP_VERIFY is executed afterward.
 def op_checksigverify(check_callback, opts={})

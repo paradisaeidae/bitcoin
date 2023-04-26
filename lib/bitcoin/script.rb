@@ -1,6 +1,7 @@
-require_relative '../bitcoin-sv'
+require_relative '../bitcoin'
 require_relative 'opcodes'
 class Bitcoin::Script
+include Opcodes
 # create a new script. +bytes+ is typically input_script + output_script
 def initialize(input_script, previous_output_script=nil)
  @raw_byte_sizes = [input_script.bytesize, previous_output_script ? previous_output_script.bytesize : 0]

@@ -19,9 +19,9 @@ Some of the main features are:
 
 == Installation
 
- gem install bitcoin-sv
+ gem install bitcoin
  # OR
- git clone https://github.com/paradisaeidae/bitcoin-sv.git; cd bitcoin-sv; bundle install
+ git clone https://github.com/paradisaeidae/bitcoin.git; cd bitcoin; bundle install
 
 Note that some aspects of the library (such as networking, storage, etc.) need
 additional dependencies which are not specified in the gemspec. The core requirements are
@@ -30,7 +30,7 @@ intentionally kept to a minimum, so nobody has to install unneeded dependencies.
 * +rspec+ to run the specs
 
 If you would like to install using Bundler, put it in your Gemfile and run bundle install
- gem 'bitcoin-sv', git: 'https://github.com/paradisaeidae/bitcoin-sv', branch: 'master', require: 'bitcoin-sv'
+ gem 'bitcoin', git: 'https://github.com/paradisaeidae/bitcoin', branch: 'master', require: 'bitcoin'
 
 == Library Usage
 

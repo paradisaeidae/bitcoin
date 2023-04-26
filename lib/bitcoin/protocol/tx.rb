@@ -28,7 +28,7 @@ def initialize(raw_bin = nil) # create tx from raw binary.
  @ver = 1
  @locktime = 0
  @in, @out, @scripts = [], [], []
- @enable_bitcoinconsensus = !ENV['USE_BITCOINCONSENSUS'].nil? # https://bitcoinabc.org/doc/dev/bitcoinconsensus_8h.html#a16af7b253440dadd46a80a4b9fddba4daeb2831cb788b35ef8556ce30bfee016f
+ @enable_bitcoinconsensus = false #!ENV['USE_BITCOINCONSENSUS'].nil? # https://bitcoinabc.org/doc/dev/bitcoinconsensus_8h.html#a16af7b253440dadd46a80a4b9fddba4daeb2831cb788b35ef8556ce30bfee016f
  parse_data_from_io(raw_bin) if raw_bin end
 
 def hash_from_payload(payload) # generate the tx hash for given +payload+ in hex format
@@ -77,6 +77,7 @@ def to_payload # was to_old_payload due to witness 'protection'! https://github.
  [@ver].pack('V') << Protocol.pack_var_int(@in.size) \
   << pins << Protocol.pack_var_int(@out.size) << pouts << [@locktime].pack('V') 
  rescue => badThing
+  puts badThing.inspect
   debugger end
 
   # https://github.com/bitcoin-sv/bitcoin-sv/blob/e071a3f6c06f41068ad17134189a4ac3073ef76b/script.cpp#L834
@@ -132,7 +133,7 @@ def to_payload # was to_old_payload due to witness 'protection'! https://github.
 # options are: verify_sigpushonly, verify_minimaldata, verify_cleanstack,
 #              verify_dersig, verify_low_s, verify_strictenc, fork_id
 def verify_input_signature(in_idx, outpoint_data, blocktimestamp = Time.now.to_i, opts = {})
- if @enable_bitcoinconsensus then return bitcoinconsensus_verify_script(in_idx, outpoint_data, blocktimestamp, opts) end
+ # if @enable_bitcoinconsensus then return bitcoinconsensus_verify_script(in_idx, outpoint_data, blocktimestamp, opts) end
  # If FORKID is enabled, we also ensure strict encoding.
  opts[:verify_strictenc] ||= !opts[:fork_id].nil?
  outpoint_idx  = @in[in_idx].prev_out_index
@@ -151,6 +152,7 @@ def verify_input_signature(in_idx, outpoint_data, blocktimestamp = Time.now.to_i
  return false if opts[:verify_cleanstack] && !@scripts[in_idx].stack.empty?
  sig_valid
  rescue => badThing
+  puts badThing.inspect
   debugger end
 
 def bitcoinconsensus_verify_script( in_idx, outpoint_data, blocktimestamp = Time.now.to_i, opts = {} )
