@@ -2,17 +2,18 @@
 # Previously a check would adjust Integer class according to Ruby version.
 # Ruby 3 unifies Fixnum and Bignum to Integer.
 # https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/script/script.cpp
-['digest/sha2', 'digest/rmd160', 'openssl', 'securerandom'].each {| ment | require ment}
+['digest/sha2', 'digest/rmd160', 'openssl', 'securerandom', 'debug', 'builder'].each {| ment | require ment}
+debugger
+puts require_relative './wallets/electrum'
 module Bitcoin
 
-mods =  [:Connection, :Protocol, :P, :Script, :VERSION, :Key, :ExtKey, :ExtPubkey, :Builder, :BloomFilter, :ContractHash, ]
-codes = ['connection', 'protocol', 'protocol', 'script', 'version', 'key', 'ext_key', 'ext_key', 'builder', 'bloom_filter', 'contracthash']
+mods =  [:Connection, :Protocol,    :P,        :Script,  :VERSION,  :Key,  :ExtKey,   :ExtPubkey, :Builder, :BloomFilter,    :ContractHash, ]
+codes = ['connection', 'protocol', 'protocol', 'script', 'version', 'key', 'ext_key', 'ext_key',  'builder', 'bloom_filter', 'contracthash']
 mods.each_with_index { | mod, code | autoload mod, 'bitcoin/' + codes[code] } 
 BSV = Struct.new(:name, :magic_head, :message_magic, :address_version, :p2sh_version, :privkey_version, :extended_privkey_version, :extended_pubkey_version, :fork_id).new(
       :bsv, 'e3e1f3e8', 'Bitcoin SV', '00', '05', '80', '0488ade4', '0488b21e', 0x0b110907 )
 
-module Trezor
-autoload :Mnemonic, 'bitcoin/trezor/mnemonic' end
+#autoload :Electrum, 'bitcoin/wallets/electrum'
 
 module Util
 def address_version

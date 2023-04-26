@@ -1,5 +1,5 @@
 module Electrum
-class WIF  # https://wiki.bitcoinsv.io/index.php/Private_Keys
+class Wif  # https://wiki.bitcoinsv.io/index.php/Private_Keys
 attr_accessor :pem, :base64, :wif
 def initialize(wif)
  if wif.include? '----' then raise 'Expected raw private, not PEM' end

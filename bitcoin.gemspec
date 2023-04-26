@@ -12,7 +12,7 @@ Gem::Specification.new do |s|
   s.description = %q{This is a ruby library for interacting with the bitcoin protocol/network}
   s.homepage    = "https://github.com/paradisaeidae/bitcoin"
 
-  s.rubyforge_project = "bitcoin"
+ # s.rubyforge_project = "bitcoin"
 
   s.files         = `git ls-files`.split("\n")
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
@@ -22,6 +22,6 @@ Gem::Specification.new do |s|
   s.required_rubygems_version = ">= 3.2.26"
 
   s.add_runtime_dependency 'ffi'
-  s.add_runtime_dependency 'scrypt' # required by Litecoin
+ # s.add_runtime_dependency 'scrypt' # required by Litecoin
   s.add_runtime_dependency 'eventmachine' # required for connection code
 end
