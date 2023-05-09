@@ -1,8 +1,10 @@
 # encoding: ascii-8bit
 module Bitcoin;module Protocol # TxOut section of https://en.bitcoin.it/wiki/Protocol_documentation#tx
+class TxOut_rec < ::BinData::Record
+ # https://developer.bitcoin.org/reference/transactions.html
+end
 class TxOut
 attr_accessor :value, :redeem_script      # output value (in base units; "satoshi")
-       # p2sh redeem script (optional, not included in the serialized binary format)
 attr_reader :pk_script, :pk_script_length # pk_script output Script
 
 def initialize(*args)
@@ -35,17 +37,10 @@ def parse_data_from_io(buf) # parse raw binary data for transaction output
 
 alias parse_payload parse_data
 
-def parsed_script
- @parsed_script ||= Bitcoin::Script.new(pk_script) end
-
-def clear_parsed_script_cache
- remove_instance_variable(:@parsed_script) if defined?(@parsed_script) end
-
-def to_payload
- [@value].pack('Q') << Protocol.pack_var_int(@pk_script_length) << @pk_script end
-
-def to_null_payload
- self.class.new(-1, '').to_payload end
+def parsed_script; @parsed_script ||= Bitcoin::Script.new(pk_script) end
+def clear_parsed_script_cache; remove_instance_variable(:@parsed_script) if defined?(@parsed_script) end
+def to_payload; [@value].pack('Q') << Protocol.pack_var_int(@pk_script_length) << @pk_script end
+def to_null_payload; self.class.new(-1, '').to_payload end
 
 def to_hash(options = {})
  h = { 'value' => format('%.8f', (@value / 100_000_000.0)), 'scriptPubKey' => parsed_script.to_string }

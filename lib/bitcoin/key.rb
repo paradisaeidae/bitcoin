@@ -1,18 +1,3 @@
-module ::OpenSSL
-class BN
-def self.from_hex(hex); new(hex, 16) end
-def to_hex; to_i.to_s(16) end
-def to_mpi; to_s(0).unpack("C*") end end
-class EC < PKey
-def private_key_hex; private_key.to_hex.rjust(64, '0') end # Pad with zeros
-def public_key_hex;  public_key.to_hex.rjust(130, '0') end
-def pubkey_compressed?; public_key.group.point_conversion_form == :compressed end end
-
-class Point < PKey::EC
-def self.from_hex(group, hex); new(group, BN.from_hex(hex)) end
-def to_hex; to_bn.to_hex end
-def self.bn2mpi(hex); BN.from_hex(hex).to_mpi end
-def ec_add(point); self.class.new(group, OpenSSL::BN.from_hex(OpenSSL_EC.ec_add(self, point))) end end end
 module Bitcoin
 class Key # Elliptic Curve key as used in bitcoin.
 attr_reader :key
@@ -24,12 +9,11 @@ MAX_PRIV_KEY_MOD_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25
 # Bitcoin::Key.new
 # Bitcoin::Key.new(privkey)
 # Bitcoin::Key.new(nil, pubkey)
-def initialize(priv_64 = nil, pubkey = nil, opts={compressed: true}) # Currently assumes a wif private key.
+def initialize(priv_64 = nil, pubkey = nil, opts={compressed: true})
  compressed = opts.is_a?(Hash) ? opts.fetch(:compressed, true) : opts
  wif_key = OpenSSL::PKey::EC::WIF.new(priv_64)
- debugger # "-----BEGIN EC PRIVATE KEY-----\n3bcd23ccab9a6134231608d3066f92a383120544a7cda3a1055559542c4176ce\n-----END EC PRIVATE KEY-----\n"
  if priv_64 then @key = OpenSSL::PKey.read wif_key.to_pem( priv_64 )
- else @key = Bitcoin.bitcoin_elliptic_curve end # secp256k1
+ else @key = Bitcoin.bitcoin_elliptic_curve end # secp256k1 Produce pub key.
  @pubkey_compressed = pubkey ? self.class.is_compressed_pubkey?(pubkey) : compressed
  # set_priv(priv_64) if priv_64
  regenerate_pubkey end

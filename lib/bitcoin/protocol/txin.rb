@@ -1,29 +1,25 @@
 module Bitcoin;module Protocol
  # https://github.com/lian/bitcoin-ruby/blob/master/lib/bitcoin/protocol/txin.rb # TxIn section of https://en.bitcoin.it/wiki/Protocol_documentation#tx
+class TxIn_rec < ::BinData::Record
+ # https://developer.bitcoin.org/reference/transactions.html
+end
 class TxIn
 attr_reader :script_sig # script_sig input Script (signature)
-# signature hash and the address of the key that needs to sign it
-# (used when dealing with unsigned or partly signed tx)
+# signature hash and the address of the key that needs to sign it (used when dealing with unsigned or partly signed tx)
 attr_accessor :sig_hash, :sig_address, :script_sig_length, :prev_out_hash, :prev_out_index
-
-alias prev_out prev_out_hash  # alias, real
-
-def prev_out=(hash)           # Will this overide the @prev_out= created by attr_accessor aliased??
- @prev_out_hash = hash end
-
-alias script script_sig
-alias script_length script_sig_length
-
-attr_accessor :sequence # sequence
-DEFAULT_SEQUENCE = "\xff\xff\xff\xff".freeze
-NULL_HASH = "\x00" * 32
-COINBASE_INDEX = 0xffffffff
+attr_accessor :sequence, :ossl_pubkey  # sequence
+DEFAULT_SEQUENCE = "\xff\xff\xff\xff".freeze; NULL_HASH = "\x00" * 32; COINBASE_INDEX = 0xffffffff
 
 def initialize(*args)
  @prev_out_hash, @prev_out_index, @script_sig_length, @script_sig, @sequence = *args
  @script_sig_length ||= 0
  @script_sig        ||= ''
  @sequence          ||= DEFAULT_SEQUENCE end
+
+def prev_out=(hash); @prev_out_hash = hash end           # Will this overide the @prev_out= created by attr_accessor aliased??
+alias prev_out prev_out_hash  # alias, real
+alias script script_sig
+alias script_length script_sig_length
 
 def ==(other) # compare to another txout
  @prev_out_hash == other.prev_out_hash && @prev_out_index == other.prev_out_index &&
@@ -35,8 +31,7 @@ def is_final? # rubocop:disable Naming/PredicateName
  warn '[DEPRECATION] `TxIn.is_final?` is deprecated. Use `final?` instead.'
  final? end
 
-def final? # returns true if the sequence number is final (DEFAULT_SEQUENCE)
- sequence == DEFAULT_SEQUENCE end
+def final?; sequence == DEFAULT_SEQUENCE end # returns true if the sequence number is final (DEFAULT_SEQUENCE)
 
 def parse_data(data) # parse raw binary data for transaction input
  buf = data.is_a?(String) ? StringIO.new(data) : data
@@ -57,15 +52,14 @@ def parse_data_from_io(buf)
 def parsed_script; @parsed_script ||= Bitcoin::Script.new(script_sig) end
 
 def to_payload(script = @script_sig, sequence = @sequence)
- #    a  | String  | arbitrary binary string (null padded, count is width)
- #    V  | Integer | 32-bit unsigned, VAX (little-endian) byte order
+ #  a  | String  | arbitrary binary string (null padded, count is width)
+ #  V  | Integer | 32-bit unsigned, VAX (little-endian) byte order
  [@prev_out_hash, @prev_out_index].pack('a32V') << Protocol.pack_var_int(script.bytesize) \
   << script.force_encoding('ASCII-8BIT') << (sequence.dup.to_s.force_encoding('ASCII-8BIT') || DEFAULT_SEQUENCE.dup.force_encoding('ASCII-8BIT'))
  rescue => badThing
   debugger end
 
-def to_hash(_options = {})
- # @prev_out_hash.nil? occurs when trans is coinbase.
+def to_hash(_options = {}) # @prev_out_hash.nil? occurs when trans is coinbase.
  if @prev_out_hash.nil? then trans_h = { 'prev_out' => @script_sig.unpack('H*')[0] }
   else trans_h = { 'prev_out' => { 'hash' => @prev_out_hash.reverse_hth, 'n' => @prev_out_index } } end
  # else coinbase tx https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/primitives/transaction.cpp
@@ -80,8 +74,7 @@ def self.from_hash(input)
  # If it is the (only) input of the first transaction of a block, it is called the Coinbase message and
  #  includes information about which block it was mined in and a miner configurable data element.
  # The definition of transaction hash remains the same as txid for non-witness transactions (non Segwit). 
- if !input.includes? 'vout' then previous_output_index = 0
-  else previous_output_index = input['vout']['n'] end
+ if !input.includes? 'vout' then previous_output_index = 0 else previous_output_index = input['vout']['n'] end
  previous_hash         = input['txid']
  txin = TxIn.new([previous_hash].pack('H*').reverse, previous_output_index)
  # What is the string???
@@ -89,14 +82,9 @@ def self.from_hash(input)
  txin.sequence =  [input['sequence'] || 0xffffffff].pack('V')
  txin end
 
-def self.from_hex_hash(hash, index)
- TxIn.new([hash].pack('H*').reverse, index, 0) end
-
-def previous_output # previous output in hex
- @prev_out_hash.reverse_hth end
-
-def coinbase? # check if input is coinbase
- (@prev_out_index == COINBASE_INDEX) && (@prev_out_hash == NULL_HASH) end
+def self.from_hex_hash(hash, index); TxIn.new([hash].pack('H*').reverse, index, 0) end
+def previous_output; @prev_out_hash.reverse_hth end
+def coinbase?; (@prev_out_index == COINBASE_INDEX) && (@prev_out_hash == NULL_HASH) end
 
 def script_sig=(script_sig) # set script_sig and script_sig_length
  @script_sig_length = script_sig.bytesize

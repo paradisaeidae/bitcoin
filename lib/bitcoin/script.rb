@@ -96,14 +96,9 @@ alias :to_payload :to_binary
 def to_binary_without_signatures(drop_signatures, chunks=nil)
   buf = []
   (chunks || @chunks).each.with_index{|chunk,idx|
-   if chunk == OP_CODESEPARATOR and idx <= @last_codeseparator_index
-    buf.clear
+   if chunk == OP_CODESEPARATOR and idx <= @last_codeseparator_index then buf.clear
    elsif chunk == OP_CODESEPARATOR
-    if idx == @script_codeseparator_index
-     break
-     else
-       # skip
-     end
+    if idx == @script_codeseparator_index then break else end  # skip
    elsif drop_signatures.none?{|e| e == chunk }
     buf << chunk end }
   to_binary(buf) end
@@ -568,9 +563,8 @@ def sighash_subscript(drop_sigs, opts = {})
    if signature && signature.size > 0
     _, hash_type = parse_sig(signature) # The underscore adds as a placeholder for the variable matching inside Ruby. It is just as greedy as any named variable, but as it is not named, you cannot access it later on. 
     (hash_type&SIGHASH_TYPE[:forkid]) != 0 end end end
- if inner_p2sh? && @inner_script_code
-  ::Bitcoin::Script.new(@inner_script_code).to_binary_without_signatures(drop_sigs)
- else to_binary_without_signatures(drop_sigs) end end
+ #if inner_p2sh? && @inner_script_code then ::Bitcoin::Script.new(@inner_script_code).to_binary_without_signatures(drop_sigs) else to_binary_without_signatures(drop_sigs) end
+ to_binary_without_signatures(drop_sigs) end
 
 def self.check_pubkey_encoding?(pubkey, opts={})
  return false if opts[:verify_strictenc] && !is_compressed_or_uncompressed_pub_key?(pubkey)

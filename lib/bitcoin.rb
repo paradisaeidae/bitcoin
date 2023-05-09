@@ -2,9 +2,8 @@
 # Previously a check would adjust Integer class according to Ruby version.
 # Ruby 3 unifies Fixnum and Bignum to Integer.
 # https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/script/script.cpp
-['digest/sha2', 'digest/rmd160', 'openssl', 'securerandom', 'debug', 'builder'].each {| ment | require ment}
-debugger
-puts require_relative './wallets/electrum'
+['digest/sha2', 'digest/rmd160', 'openssl', 'securerandom', 'debug', 'builder', 'base58-alphabets'].each {| ment | require ment}
+require_relative './bitcoin/wallets/electrum'
 module Bitcoin
 
 mods =  [:Connection, :Protocol,    :P,        :Script,  :VERSION,  :Key,  :ExtKey,   :ExtPubkey, :Builder, :BloomFilter,    :ContractHash, ]
@@ -218,7 +217,28 @@ def sign_data(key, data)
   else p ["Bitcoin#sign_data: invalid der signature generated, trying again.", data.unpack("H*")[0], sig.unpack("H*")[0]] end }
  return sig end
 
-def verify_signature(hash, signature, public_key)
+def verify_signature(hash, signature, hex_66) # 
+ ossl_pub = ossl_pub_key(hex_66)
+ debugger 
+ ossl_pub.verify_raw(nil, signature, hash, options)
+ repack_sig = Bitcoin::OpenSSL_EC.repack_der_signature(signature)
+ if repack_sig then ossl_pub.dsa_verify_asn1(hash, repack_sig) else false end
+ rescue OpenSSL::PKey::ECError, OpenSSL::PKey::EC::Point::Error, OpenSSL::BNError
+ false end
+
+def ossl_pub_key(hex_66)
+ sequence = OpenSSL::ASN1::Sequence([ OpenSSL::ASN1::Integer(1), OpenSSL::ASN1::OctetString(OpenSSL::BN.new(hex_66, 16).to_s(2)),
+  OpenSSL::ASN1::ObjectId("secp256k1", 0, :EXPLICIT)])
+ pub = OpenSSL::PKey::EC.new(sequence.to_der)
+ end
+
+=begin
+def verify_signature_prev(data, signature, public_key) # 
+ debugger
+ # Build the OpenSSL.3 pubkey.
+ OpenSSL::PKey.read public_key
+ public_key.verify_raw(nil, signature, data, options)
+ # Cannot assign key 
  key = bitcoin_elliptic_curve
  key.public_key = ::OpenSSL::PKey::EC::Point.from_hex(key.group, public_key)
  signature = Bitcoin::OpenSSL_EC.repack_der_signature(signature)
@@ -226,6 +246,7 @@ def verify_signature(hash, signature, public_key)
  else false end
  rescue OpenSSL::PKey::ECError, OpenSSL::PKey::EC::Point::Error, OpenSSL::BNError
  false end
+=end
 
 def base64_to_hex(base64_string)
  base64_string.scan(/.{4}/).map do |b| b.unpack('m0').first.unpack('H') end.join end
@@ -262,7 +283,6 @@ def open_key(private_key_hex, public_key=nil) # https://www.rfc-editor.org/rfc/r
   rescue OpenSSL::PKey::PKeyError => badThing
    puts 'Pbbly unsupported due to format error.' << badThing.inspect
    raise 'Issue with reading private key' end
-  
 
  key.private_key = ::OpenSSL::BN.from_hex(private_key_hex)
  public_key = regenerate_public_key(private_key) unless public_key
@@ -370,12 +390,14 @@ def htb_reverse; htb.reverse; end
 def hth; unpack("H*")[0]; end
 def reverse_hth; reverse.hth; end end
 
-class ::String
-include Bitcoin::BinaryExtensions end
-
-autoload :OpenSSL_EC,       "bitcoin/ffi/openssl"
-autoload :Secp256k1,        "bitcoin/ffi/secp256k1"
-autoload :BitcoinConsensus, "bitcoin/ffi/bitcoinconsensus"
+class ::String; include Bitcoin::BinaryExtensions end
+debugger
+require_relative "./bitcoin/ffi/openssl.rb"
+require_relative "./bitcoin/ffi/secp256k1.rb"
+require_relative "./bitcoin/ffi/bitcoinconsensus.rb"
+#autoload :OpenSSL_EC,       "bitcoin/ffi/openssl"
+#autoload :Secp256k1,        "bitcoin/ffi/secp256k1"
+#autoload :BitcoinConsensus, "bitcoin/ffi/bitcoinconsensus"
 @network = []
 
 def self.network
