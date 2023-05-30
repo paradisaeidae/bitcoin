@@ -1,5 +1,6 @@
-# -*- coding: utf-8 -*- # Specify Unicode UTF-8 characters
-require 'bindata'; require 'ecdsa'; require 'money-tree' # https://github.com/dougal/base58 https://github.com/GemHQ/money-tree/blob/2d0ba66441ec035e364482690bfe395ca7bf64b8/lib/money-tree/key.rb#L60
+# -*- coding: utf-8 -*- 
+# https://github.com/dougal/base58 https://github.com/GemHQ/money-tree/blob/2d0ba66441ec035e364482690bfe395ca7bf64b8/lib/money-tree/key.rb#L60
+# https://ozanyurtseven.wordpress.com/2015/04/29/hierarchical-deterministic-wallets-bip0032bip0044-in-ruby/
 module Electrum
 class Wif_rec < ::BinData::Record
  #attr_accessor :network, :p_key_str, :compression, :checksum
@@ -8,10 +9,9 @@ class Wif_rec < ::BinData::Record
  string :p_key_str,   length: 32   # 256-bit integer (32 bytes)
  uint8  :compression, length: 1    # BSV public keys are always compressed.
  string :checksum,    length: 4
- def each_pair
- end
- def to_s # Convert the WIF fields to a WIF string
-  Base58.encode(to_binary_s) end end
+ def each_pair() end
+ def to_s() Base58.encode(to_binary_s) end end # Convert the WIF fields to a WIF string
+
 class Wif  # https://wiki.bitcoinsv.io/index.php/Private_Keys
 attr_accessor :pem, :base64, :wif_rec, :p_key
 
@@ -21,13 +21,12 @@ def initialize(wif)
  puts 'Length not 32' if wif_rec.p_key_str.bytesize != 32
  p_key_bn = ECDSA::Format::IntegerOctetString.decode(wif_rec.p_key_str)
  raise 'Not on Secp256k1 curve' unless p_key_bn > 1 && p_key_bn < ECDSA::Group::Secp256k1.order # Check that the private key is within the valid range
- @p_key = ::MoneyTree::PrivateKey.new(key: wif)
+ @p_key = ::MoneyTree::PrivateKey.new(key: wif) # Imports, creates openssl key using ASN1 datasequence.
+ @p_key.calculate_public_key(:compressed => true)
  rescue => badThing
   puts badThing.inspect; puts badThing.backtrace; raise 'Issue reading in wif' end
 
-def to_pem(base64)
- pem = "-----BEGIN EC PRIVATE KEY-----\n" + base64 + "\n-----END EC PRIVATE KEY-----\n"
- @pem = pem end
+def to_pem(base64) @pem = "-----BEGIN EC PRIVATE KEY-----\n" + base64 + "\n-----END EC PRIVATE KEY-----\n" end
 
 def check_wif(wif)
  raise 'Expecting wif to be UTF-8' if wif.encoding != 'UTF-8'
@@ -77,5 +76,3 @@ NETWORKS = begin
  hsh[:stn]      = hsh[:bitcoin_testnet]
  hsh[:regtest]  = hsh[:bitcoin_testnet]
  hsh end end
-
-# https://ozanyurtseven.wordpress.com/2015/04/29/hierarchical-deterministic-wallets-bip0032bip0044-in-ruby/

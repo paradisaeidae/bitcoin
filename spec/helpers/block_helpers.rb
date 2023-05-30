@@ -2,6 +2,7 @@
 # Helpers for block construction using the builder abstraction.
 module BlockHelpers
 # Network configuration where mining a block is possible
+Bitcoin::NETWORKS = {}
 Bitcoin::NETWORKS[:spec] = {
  project: :bitcoin,
  magic_head: 'spec',

@@ -189,8 +189,7 @@ describe Bitcoin::Script do
     expect(op(:lessthan, stack)).to eq([expected]) end end
 
   it 'should do op_lessthanorequal' do
-    [
-      [[11, 10], 0],
+    [ [[11, 10], 0],
       [[4, 4], 1],
       [[10, 11], 1],
       [[-11, 11], 1],
@@ -200,8 +199,7 @@ describe Bitcoin::Script do
       expect(op(:lessthanorequal, stack)).to eq([expected]) end end
 
   it 'should do op_greaterthan' do
-    [
-      [[11, 10], 1],
+    [ [[11, 10], 1],
       [[4, 4], 0],
       [[10, 11], 0],
       [[-11, 11], 0],
@@ -212,8 +210,7 @@ describe Bitcoin::Script do
       expect(op(:greaterthan, stack)).to eq([expected]) end end
 
   it 'should do op_greaterthanorequal' do
-    [
-      [[11, 10], 1],
+    [ [[11, 10], 1],
       [[4, 4], 1],
       [[10, 11], 0],
       [[-11, 11], 0],
@@ -229,8 +226,7 @@ describe Bitcoin::Script do
     expect(op(:not, [1])).to eq([0]) end
 
   it 'should do op_0notequal' do
-    [
-      [[0], 0],
+    [ [[0], 0],
       [[1], 1],
       [[111], 1],
       [[-111], 1]
@@ -238,8 +234,7 @@ describe Bitcoin::Script do
       expect(op('0notequal', stack)).to eq([expected]) end end
 
   it 'should do op_abs' do
-    [
-      [[0], 0],
+    [ [[0], 0],
       [[16], 16],
       [[-16], 16],
       [[-1], 1]
@@ -302,8 +297,7 @@ describe Bitcoin::Script do
       expect(op(:numnotequal, stack)).to eq([expected]) end end
 
   it 'should do op_over' do
-    [
-      [[1, 0], [1, 0, 1]],
+    [ [[1, 0], [1, 0, 1]],
       [[-1, 1], [-1, 1, -1]],
       [[1], [1]]
     ].each do |stack, expected|
@@ -316,8 +310,7 @@ describe Bitcoin::Script do
       expect(op(:pick, stack)).to eq(expected)
       expect(script).not_to be_invalid end
 
-    [
-      [[0], [0]],
+    [ [[0], [0]],
       [[-1], [-1]]
     ].each do |stack, expected|
       expect(op(:pick, stack)).to eq(expected)
@@ -442,8 +435,7 @@ describe Bitcoin::Script do
       '304402202c2fb840b527326f9bbc7ce68c6c196a368a38864b5a47681352c4b2f416f' \
       '7ed02205c4801cfa8aed205f26c7122ab5a5934fcf7a2f038fd130cdd8bcc56bdde0a00' ].pack('H*')
     hash_type = [1].pack('C')
-    signature_data = [
-      '20245059adb84acaf1aa942b5d8a586da7ba76f17ecb5de4e7543e1ce1b94bc3' ].pack('H*')
+    signature_data = ['20245059adb84acaf1aa942b5d8a586da7ba76f17ecb5de4e7543e1ce1b94bc3' ].pack('H*')
 
     script.stack = [signature + hash_type, pubkey]
     verify_callback = proc do |pub, sig, hash_t|

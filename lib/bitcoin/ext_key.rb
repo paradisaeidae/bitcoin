@@ -1,6 +1,5 @@
 module Bitcoin
-def self.hmac_sha512(key, data)
- OpenSSL::HMAC.digest(OpenSSL::Digest.new('SHA512'), key, data) end
+def self.hmac_sha512(key, data) OpenSSL::HMAC.digest(OpenSSL::Digest.new('SHA512'), key, data) end
 
 # Integers modulo the order of the curve(secp256k1)
 CURVE_ORDER = 115792089237316195423570985008687907852837564279074904382605163141518161494337
@@ -34,28 +33,18 @@ def ext_pubkey # get ExtPubkey from priv_key
  k end
 
 def to_payload # serialize extended private key
-  Bitcoin.network[:extended_privkey_version].htb << [depth].pack('C') << parent_fingerprint.htb << [number].pack('N') << chain_code << [0x00].pack('C') << priv_key.priv.htb end
+ Bitcoin.network[:extended_privkey_version].htb << [depth].pack('C') << parent_fingerprint.htb << [number].pack('N') << chain_code << [0x00].pack('C') << priv_key.priv.htb end
 
-# Base58 encoded extended private key
-def to_base58
+def to_base58 # Base58 encoded extended private key
  h = to_payload.bth
  hex = h + Bitcoin.checksum(h)
  Bitcoin.encode_base58(hex) end
 
-def priv # get private key(hex)
- priv_key.priv end
-
-def pub # get public key(hex)
- priv_key.pub end
-
-def addr # get address
- priv_key.addr end
-
-def identifier # get key identifier
- Bitcoin.hash160(priv_key.pub) end
-
-def fingerprint # get fingerprint
- identifier.slice(0..7) end
+def priv()        priv_key.priv end# get private key(hex)
+def pub()         priv_key.pub end# get public key(hex)
+def addr()        priv_key.addr end# get address
+def identifier()  Bitcoin.hash160(priv_key.pub) end# get key identifier
+def fingerprint() identifier.slice(0..7) end# get fingerprint
 
 # derive new key
 def derive(number)
@@ -87,7 +76,7 @@ def self.from_base58(address)
  key.priv_key = Bitcoin::Key.new(data.read(32).bth)
  key end end
 
-  # BIP-32 Extended public key
+  # BIP-32 Extended public key BIP 32. An extended key is a private key or public key that you can use to derive new keys in a hierarchical deterministic wallet. Therefore, you can have a single extended private key , and use it as the source for all the child private keys and public keys in your wallet.
  class ExtPubkey
  attr_accessor :depth
  attr_accessor :number
@@ -102,14 +91,9 @@ def pub # get public key(hex)
  pub_key.group.point_conversion_form = :compressed
  pub_key.to_hex.rjust(66, '0') end
 
-def addr # get address
- Bitcoin.hash160_to_address(Bitcoin.hash160(pub)) end
-
-def identifier # get key identifier
- Bitcoin.hash160(pub) end
-
-def fingerprint # get fingerprint
- identifier.slice(0..7) end
+def addr() Bitcoin.hash160_to_address(Bitcoin.hash160(pub)) end # get address
+def identifier() Bitcoin.hash160(pub) end # get key identifier
+def fingerprint() identifier.slice(0..7) end # get fingerprint
 
 def to_base58 # Base58 encoded extended pubkey
  h = to_payload.bth

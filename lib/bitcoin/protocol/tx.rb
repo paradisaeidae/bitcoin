@@ -60,8 +60,7 @@ def to_payload # was to_old_payload due to witness 'protection'! https://github.
  pins, pouts = '', ''
  @in.each  { |input | pins  << input.to_payload  }
  @out.each { |output| pouts << output.to_payload }
- [@ver].pack('V') << Protocol.pack_var_int(@in.size) \
-  << pins << Protocol.pack_var_int(@out.size) << pouts << [@locktime].pack('V') 
+ [@ver].pack('V') << Protocol.pack_var_int(@in.size) << pins << Protocol.pack_var_int(@out.size) << pouts << [@locktime].pack('V') 
  rescue => badThing
   puts badThing.inspect
   debugger end
@@ -83,7 +82,7 @@ def to_payload # was to_old_payload due to witness 'protection'! https://github.
   return "\x01".ljust(32, "\x00") if input_idx >= @in.size
   pin = @in.map.with_index do | input, idx |
    if idx == input_idx    # legacy api (outpoint_tx)
-    redeem_scr = redeem_scr.outputs[input.prev_out_index].script if redeem_scr.respond_to?(:out)
+    redeem_scr = redeem_scr.outputs[input.prev_out_index].script if redeem_scr.respond_to?(:out) # This is the check for redeem_scr being a +outpoint_tx+???
     parsed_redeem_scr = Script.new(redeem_scr)
     parsed_redeem_scr.chunks.delete(Script::OP_CODESEPARATOR) # Remove all instances of OP_CODESEPARATOR from the script.
     redeem_scr = parsed_redeem_scr.to_binary
@@ -112,28 +111,29 @@ def to_payload # was to_old_payload due to witness 'protection'! https://github.
    in_size = Protocol.pack_var_int(1)
    pin = [pin[input_idx]] end
   buff = [ [@ver].pack('V'), in_size, pin, out_size, pout, [@locktime, hash_type].pack('VV') ].join # 32-bit unsigned, VAX (little-endian) byte order
-  Digest::SHA256.digest(Digest::SHA256.digest(buff)) end
+  Digest::SHA256.digest(Digest::SHA256.digest(buff))
+ rescue => badThing
+  puts badThing.inspect
+  puts badThing.backtrace
+  debugger end
 # verify input signature +in_idx+ against the corresponding output in +outpoint_tx+ outpoint.
 # This arg can also be a Script or TxOut.
-# options are: verify_sigpushonly, verify_minimaldata, verify_cleanstack,
-#              verify_dersig, verify_low_s, verify_strictenc, fork_id
+# options are: verify_sigpushonly, verify_minimaldata, verify_cleanstack, verify_dersig, verify_low_s, verify_strictenc, fork_id
 def verify_input_signature(in_idx, outpoint_data, blocktimestamp = Time.now.to_i, opts = {})
  # if @enable_bitcoinconsensus then return bitcoinconsensus_verify_script(in_idx, outpoint_data, blocktimestamp, opts) end
  # If FORKID is enabled, we also ensure strict encoding.
  opts[:verify_strictenc] ||= !opts[:fork_id].nil?
  outpoint_idx  = @in[in_idx].prev_out_index
  script_sig    = @in[in_idx].script_sig
- #pubkey        = @in[in_idx].ossl_pubkey
  amount = amount_from_outpoint_data(outpoint_data, outpoint_idx)
  script_pubkey = script_pubkey_from_outpoint_data(outpoint_data, outpoint_idx)
- if opts[:fork_id] && amount.nil?
-  raise 'verify_input_signature must be called with a previous transaction or transaction output if SIGHASH_FORKID is enabled' end
+ raise 'verify_input_signature must be called with a previous transaction or transaction output if SIGHASH_FORKID is enabled' if opts[:fork_id] && amount.nil?
  @scripts[in_idx] = Bitcoin::Script.new(script_sig, script_pubkey)
  return false if opts[:verify_sigpushonly] && !@scripts[in_idx].is_push_only?(script_sig)
  return false if opts[:verify_minimaldata] && !@scripts[in_idx].pushes_are_canonical?
- sig_valid = @scripts[in_idx].run( blocktimestamp, opts ) do | pubkey, sig, hash_type, subscript |
+ sig_valid = @scripts[in_idx].run( blocktimestamp, opts ) do | pubkey, sig, hash_type, subscript | # This block is used by script call(pubkey, sig, hash_type, subscript) in Tx
   hash = signature_hash_for_input(in_idx, subscript, hash_type, amount, opts[:fork_id])
-  Bitcoin.verify_signature( hash, sig, pubkey.unpack('H*')[0])  end #
+  Bitcoin.verify_signature(pubkey, sig, hash) end
  return false if opts[:verify_cleanstack] && !@scripts[in_idx].stack.empty? # BIP62 rule #6
  sig_valid
  rescue => badThing
@@ -187,11 +187,11 @@ def self.binary_from_hash(h)           # convert ruby hash to raw binary
  tx = from_hash(h)
  tx.to_payload end
 
-def self.from_json(json_string); from_hash(JSON.parse(json_string)) end
-def self.binary_from_json(json_string); from_json(json_string).to_payload end
-def self.from_file(path); new(Bitcoin::Protocol.read_binary_file(path)) end
-def self.from_json_file(path); from_json(Bitcoin::Protocol.read_binary_file(path)) end
-def size; payload.bytesize end
+def self.from_json(json_string)         from_hash(JSON.parse(json_string)) end
+def self.binary_from_json(json_string)  from_json(json_string).to_payload end
+def self.from_file(path)                new(Bitcoin::Protocol.read_binary_file(path)) end
+def self.from_json_file(path)           from_json(Bitcoin::Protocol.read_binary_file(path)) end
+def size()                              payload.bytesize end
 
 def is_final?(block_height, blocktime) # rubocop:disable Naming/PredicateName
  warn '[DEPRECATION] `Tx.is_final?` is deprecated. Use `final?` instead.'
@@ -221,8 +221,8 @@ def legacy_sigops_count
 
 DEFAULT_BLOCK_PRIORITY_SIZE = 27_000
 
-def minimum_relay_fee; calculate_minimum_fee(true, :relay) end
-def minimum_block_fee; calculate_minimum_fee(true, :block) end
+def minimum_relay_fee() calculate_minimum_fee(true, :relay) end
+def minimum_block_fee() calculate_minimum_fee(true, :block) end
 
 def calculate_minimum_fee(allow_free = true, mode = :block)
  # Base fee is either nMinTxFee or nMinRelayTxFee
@@ -253,8 +253,8 @@ def calculate_minimum_fee(allow_free = true, mode = :block)
  min_fee = Bitcoin.network[:max_money] unless min_fee.between?( 0, Bitcoin.network[:max_money] )
  min_fee end
 
-def coinbase?; inputs.size == 1 && inputs.first.coinbase? end
-def normalized_hash; signature_hash_for_input( -1, nil, SIGHASH_TYPE[:all]).reverse.hth end
+def coinbase?()       inputs.size == 1 && inputs.first.coinbase? end
+def normalized_hash() signature_hash_for_input( -1, nil, SIGHASH_TYPE[:all]).reverse.hth end
 
 # sort transaction inputs and outputs under BIP 69
 # https://github.com/bitcoin/bips/blob/master/bip-0069.mediawiki This is interesting.

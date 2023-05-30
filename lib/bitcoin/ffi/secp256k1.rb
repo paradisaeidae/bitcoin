@@ -1,77 +1,5 @@
 # encoding: ascii-8bit
-
-require 'ffi'
-
 module Bitcoin; module Secp256k1
-=begin bindings for secp256k1 inside bitcoin (https://github.com/bitcoin-core/secp256k1)
- wget https://github.com/bitcoin-core/secp256k1/archive/refs/tags/v0.3.1.tar.gz
- tar -zxvf v0.3.1.tar.gz
- cd secp256k1-0.3.1
- ./autogen.sh
- ./configure --enable-module-recovery
- nm -D .libs/libsecp256k1.so | grep secp
- export SECP256K1_LIB_PATH=/path/to/bitcoin/src/secp256k1/.libs/libsecp256k1.so.2.0.1
-context_clone
-context_create
-context_destroy
-context_no_precomp
-context_preallocated_clone
-context_preallocated_clone_size
-context_preallocated_create
-context_preallocated_destroy
-context_preallocated_size
-context_randomize
-context_set_error_callback
-context_set_illegal_callback
-context_static
-ecdh
-ecdh_hash_function_default
-ecdh_hash_function_sha256
-ecdsa_sign
-ecdsa_signature_normalize
-ecdsa_signature_parse_compact
-ecdsa_signature_parse_der
-ecdsa_signature_serialize_compact
-ecdsa_signature_serialize_der
-ecdsa_verify
-ec_privkey_negate
-ec_privkey_tweak_add
-ec_privkey_tweak_mul
-ec_pubkey_cmp
-ec_pubkey_combine
-ec_pubkey_create
-ec_pubkey_negate
-ec_pubkey_parse
-ec_pubkey_serialize
-ec_pubkey_tweak_add
-ec_pubkey_tweak_mul
-ec_seckey_negate
-ec_seckey_tweak_add
-ec_seckey_tweak_mul
-ec_seckey_verify
-keypair_create
-keypair_pub
-keypair_sec
-keypair_xonly_pub
-keypair_xonly_tweak_add
-nonce_function_bip340
-nonce_function_default
-nonce_function_rfc6979
-schnorrsig_sign
-schnorrsig_sign32
-schnorrsig_sign_custom
-schnorrsig_verify
-scratch_space_create
-scratch_space_destroy
-selftest
-tagged_sha256
-xonly_pubkey_cmp
-xonly_pubkey_from_pubkey
-xonly_pubkey_parse
-xonly_pubkey_serialize
-xonly_pubkey_tweak_add
-xonly_pubkey_tweak_add_check
-=end
  extend FFI::Library
  SECP256K1_FLAGS_TYPE_MASK = ((1 << 8) - 1)
  SECP256K1_FLAGS_TYPE_CONTEXT = (1 << 0)
@@ -106,13 +34,13 @@ xonly_pubkey_tweak_add_check
   # int secp256k1_ec_pubkey_serialize(const secp256k1_context* ctx, unsigned char *output, size_t *outputlen, const secp256k1_pubkey* pubkey, unsigned int flags)
   attach_function :secp256k1_ec_pubkey_serialize, [:pointer, :pointer, :pointer, :pointer, :uint], :int
   # int secp256k1_ecdsa_sign_recoverable(const secp256k1_context* ctx, secp256k1_ecdsa_recoverable_signature *sig, const unsigned char *msg32, const unsigned char *seckey, secp256k1_nonce_function noncefp, const void *ndata)
-  attach_function :secp256k1_ecdsa_sign_recoverable, [:pointer, :pointer, :pointer, :pointer, :pointer, :pointer], :int
+ # attach_function :secp256k1_ecdsa_sign_recoverable, [:pointer, :pointer, :pointer, :pointer, :pointer, :pointer], :int
   # int secp256k1_ecdsa_recoverable_signature_serialize_compact(const secp256k1_context* ctx, unsigned char *output64, int *recid, const secp256k1_ecdsa_recoverable_signature* sig)
-  attach_function :secp256k1_ecdsa_recoverable_signature_serialize_compact, [:pointer, :pointer, :pointer, :pointer], :int
+ # attach_function :secp256k1_ecdsa_recoverable_signature_serialize_compact, [:pointer, :pointer, :pointer, :pointer], :int
   # int secp256k1_ecdsa_recoverable_signature_parse_compact(const secp256k1_context* ctx, secp256k1_ecdsa_recoverable_signature* sig, const unsigned char *input64, int recid)
-  attach_function :secp256k1_ecdsa_recoverable_signature_parse_compact, [:pointer, :pointer, :pointer, :int], :int
+ # attach_function :secp256k1_ecdsa_recoverable_signature_parse_compact, [:pointer, :pointer, :pointer, :int], :int
   # int secp256k1_ecdsa_recover(const secp256k1_context* ctx, secp256k1_pubkey *pubkey, const secp256k1_ecdsa_recoverable_signature *sig, const unsigned char *msg32)
-  attach_function :secp256k1_ecdsa_recover, [:pointer, :pointer, :pointer, :pointer], :int
+ # attach_function :secp256k1_ecdsa_recover, [:pointer, :pointer, :pointer, :pointer], :int
   # int secp256k1_ecdsa_sign(const secp256k1_context* ctx, secp256k1_ecdsa_signature *sig, const unsigned char *msg32, const unsigned char *seckey, secp256k1_nonce_function noncefp, const void *ndata)
   attach_function :secp256k1_ecdsa_sign, [:pointer, :pointer, :pointer, :pointer, :pointer, :pointer], :int
   # int secp256k1_ecdsa_signature_serialize_der(const secp256k1_context* ctx, unsigned char *output, size_t *outputlen, const secp256k1_ecdsa_signature* sig)
@@ -135,9 +63,12 @@ RUBY
  def self.init
   @loaded ||= false
   return if @loaded
-  lib_path = [ ENV['SECP256K1_LIB_PATH'], 'libsecp256k1.so'
-  ].find { |f| File.exist?(f.to_s) }
+  lib_path = [ ENV['SECP256K1_LIB_PATH'], 'libsecp256k1.so' ].find { |f| File.exist?(f.to_s) }
+  lib_path = '/MakeStore/MakeFromHere/SECP256k1/secp256k1-0.3.1/.libs/libsecp256k1.so.2.0.1'
+
+  puts "Loading secp256k1 from: #{lib_path}"
   ffi_load_functions(lib_path)
+  puts "Found functions: #{self.ffi_libraries.inspect}"
   @loaded = true end
 
  def self.with_context(flags = nil, seed = nil)
@@ -214,8 +145,7 @@ RUBY
 
     signature = FFI::MemoryPointer.new(:uchar, sig.bytesize).put_bytes(0, sig)
     internal_signature = FFI::MemoryPointer.new(:uchar, 64)
-    result = secp256k1_ecdsa_signature_parse_der(
-      context, internal_signature, signature, signature.size )
+    result = secp256k1_ecdsa_signature_parse_der( context, internal_signature, signature, signature.size )
     # result = ecdsa_signature_parse_der_lax( context, internal_signature, signature, signature.size )
     return false unless result == 1
 
@@ -228,7 +158,7 @@ RUBY
 
     return result == 1 end end
 
- def self.sign_compact(message, priv_key, compressed = true)
+ def self.sign_compact(message, priv_key, compressed = true) # DEPRECATABLE
   with_context do |context|
    seckey = FFI::MemoryPointer.new(:uchar, priv_key.bytesize).put_bytes(0, priv_key)
    raise 'priv_key invalid' unless secp256k1_ec_seckey_verify(context, seckey) == 1
@@ -250,7 +180,7 @@ RUBY
    header = [27 + rec_id.read_int + (compressed ? 4 : 0)].pack('C')
    [header, recoverable_signature.read_string(64)].join end end
 
- def self.recover_compact(message, signature)
+ def self.recover_compact(message, signature) # DEPRECATABLE
   with_context do |context| return nil if signature.bytesize != 65
    version = signature.unpack('C')[0]
    return nil if version < 27 || version > 34
@@ -277,3 +207,74 @@ RUBY
    raise 'error serialize pubkey' unless (result == 1) || pubkey_len.read_uint64 > 0
   
    pubkey.read_string(pubkey_len.read_uint64) end end end end
+
+
+=begin bindings for secp256k1 inside bitcoin (https://github.com/bitcoin-core/secp256k1)
+ wget https://github.com/bitcoin-core/secp256k1/archive/refs/tags/v0.3.1.tar.gz
+ tar -zxvf v0.3.1.tar.gz
+ cd secp256k1-0.3.1
+ ./autogen.sh
+ ./configure --enable-module-recovery
+ nm -D .libs/libsecp256k1.so | grep secp
+ export SECP256K1_LIB_PATH=/path/to/bitcoin/src/secp256k1/.libs/libsecp256k1.so.2.0.1
+context_clone
+context_create
+context_destroy
+context_no_precomp
+context_preallocated_clone
+context_preallocated_clone_size
+context_preallocated_create
+context_preallocated_destroy
+context_preallocated_size
+context_randomize
+context_set_error_callback
+context_set_illegal_callback
+context_static
+ecdh
+ecdh_hash_function_default
+ecdh_hash_function_sha256
+ecdsa_sign
+ecdsa_signature_normalize
+ecdsa_signature_parse_compact
+ecdsa_signature_parse_der
+ecdsa_signature_serialize_compact
+ecdsa_signature_serialize_der
+ecdsa_verify
+ec_privkey_negate
+ec_privkey_tweak_add
+ec_privkey_tweak_mul
+ec_pubkey_cmp
+ec_pubkey_combine
+ec_pubkey_create
+ec_pubkey_negate
+ec_pubkey_parse
+ec_pubkey_serialize
+ec_pubkey_tweak_add
+ec_pubkey_tweak_mul
+ec_seckey_negate
+ec_seckey_tweak_add
+ec_seckey_tweak_mul
+ec_seckey_verify
+keypair_create
+keypair_pub
+keypair_sec
+keypair_xonly_pub
+keypair_xonly_tweak_add
+nonce_function_bip340
+nonce_function_default
+nonce_function_rfc6979
+schnorrsig_sign
+schnorrsig_sign32
+schnorrsig_sign_custom
+schnorrsig_verify
+scratch_space_create
+scratch_space_destroy
+selftest
+tagged_sha256
+xonly_pubkey_cmp
+xonly_pubkey_from_pubkey
+xonly_pubkey_parse
+xonly_pubkey_serialize
+xonly_pubkey_tweak_add
+xonly_pubkey_tweak_add_check
+=end

@@ -1,4 +1,3 @@
-puts "bitcoinconsensus.rb ffi required: #{require 'ffi'}"
 module Bitcoin
 # binding for src/.libs/bitcoinconsensus.so (https://github.com/bitcoin-sv/bitcoin-sv)
 # tag: v0.11.0

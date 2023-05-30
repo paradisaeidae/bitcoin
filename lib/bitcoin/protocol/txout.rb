@@ -37,10 +37,13 @@ def parse_data_from_io(buf) # parse raw binary data for transaction output
 
 alias parse_payload parse_data
 
-def parsed_script; @parsed_script ||= Bitcoin::Script.new(pk_script) end
-def clear_parsed_script_cache; remove_instance_variable(:@parsed_script) if defined?(@parsed_script) end
-def to_payload; [@value].pack('Q') << Protocol.pack_var_int(@pk_script_length) << @pk_script end
-def to_null_payload; self.class.new(-1, '').to_payload end
+def parsed_script()             @parsed_script ||= Bitcoin::Script.new(pk_script) end
+def clear_parsed_script_cache() remove_instance_variable(:@parsed_script) if defined?(@parsed_script) end
+def to_payload()
+                [@value].pack('Q') << Protocol.pack_var_int(@pk_script_length) << @pk_script
+rescue => badThing
+ debugger end
+def to_null_payload()           self.class.new(-1, '').to_payload end
 
 def to_hash(options = {})
  h = { 'value' => format('%.8f', (@value / 100_000_000.0)), 'scriptPubKey' => parsed_script.to_string }
@@ -59,6 +62,7 @@ def pk_script=(pk_script) # set pk_script and pk_script_length
  @pk_script_length = pk_script.bytesize
  @pk_script = pk_script end
 
+# These asliases should be flattened out, deprecated.
 alias amount   value
 alias amount=  value=
 alias script   pk_script

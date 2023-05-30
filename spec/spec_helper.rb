@@ -6,11 +6,9 @@ require 'simplecov' # Code coverage generation
 
 SimpleCov.start do
  add_group('Bitcoin') do |file|
-  ['bitcoin.rb', 'opcodes.rb', 'script.rb', 'key.rb'].include?(
-   file.filename.split('/').last ) end
+  ['bitcoin.rb', 'opcodes.rb', 'script.rb', 'key.rb'].include?( file.filename.split('/').last ) end
  add_group 'Protocol', 'lib/bitcoin/protocol'
- add_group('Utilities') do |file|
-  ['logger.rb', 'openssl.rb'].include?( file.filename.split('/').last ) end end
+ add_group('Utilities') do |file| ['logger.rb', 'openssl.rb'].include?( file.filename.split('/').last ) end end
 
 # Require all test helper files.
 Dir['./spec/helpers/**/*.rb'].sort.each { |file| require file }

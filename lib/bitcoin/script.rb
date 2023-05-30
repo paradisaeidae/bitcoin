@@ -196,14 +196,13 @@ def self.binary_from_string(script_string) # raw script binary of a string repre
    end if i }
  buf end
 
-def invalid?
- @script_invalid ||= false end
+def invalid?() @script_invalid ||= false end
 
 # run the script. +check_callback+ is called for OP_CHECKSIG operations
 def run(block_timestamp=Time.now.to_i, opts={}, &check_callback)
  return false if @parse_invalid
  @script_invalid = true if @raw_byte_sizes.any?{ | size | size > 10_000 }
- @last_codeseparator_index = 0 # 1333238400
+ @last_codeseparator_index = 0
  @debug = []
  @chunks.each.with_index{| chunk, idx |
   break if invalid?
@@ -217,18 +216,15 @@ def run(block_timestamp=Time.now.to_i, opts={}, &check_callback)
     @script_invalid = true
     @debug << "DISABLED_#{OPCODES[chunk]}"
     break end
-   next @debug.pop  unless (@do_exec || (OP_IF <= chunk && chunk <= OP_ENDIF))
+   next @debug.pop unless (@do_exec || (OP_IF <= chunk && chunk <= OP_ENDIF))
    case chunk
    when *OPCODES_METHOD.keys
     m = method( n=OPCODES_METHOD[chunk] )
     @debug << n.to_s.upcase
     case m.arity # invoke opcode method
-    when 0
-     m.call
-    when 1
-     m.call(check_callback)
-    when -2 # One fixed parameter, one optional
-     m.call(check_callback, opts)
+    when 0;  m.call
+    when 1;  m.call(check_callback)
+    when -2; m.call(check_callback, opts)# One fixed parameter, one optional
     else puts "Bitcoin::Script: opcode #{name} method parameters invalid" end
    when *OP_2_16
     @stack << OP_2_16.index(chunk) + 2
@@ -251,15 +247,13 @@ def run(block_timestamp=Time.now.to_i, opts={}, &check_callback)
  return false if cast_to_bool(@stack.pop) == false
  true end
 
-def invalid
- @script_invalid = true; nil end
+def invalid() @script_invalid = true; nil end
 
 def self.drop_signatures(script_pubkey, drop_signatures)
  script = new(script_pubkey).to_string.split(" ").delete_if{|c| drop_signatures.include?(c) }.join(" ")
  script_pubkey = binary_from_string(script) end
 
-def is_standard? # check if script is in one of the recognized standard formats
- is_pubkey? || is_hash160? || is_multisig? || is_op_return? end
+def is_standard?() is_pubkey? || is_hash160? || is_multisig? || is_op_return? end # check if script is in one of the recognized standard formats
 
 def is_pubkey? # is this a pubkey script
  return false if @chunks.size != 2
@@ -276,12 +270,10 @@ def is_multisig? # is this a multisig script
  return false  if @chunks.size < 4 || !@chunks[-2].is_a?(Integer)
  @chunks[-1] == OP_CHECKMULTISIG and get_multisig_pubkeys.all?{|c| c.is_a?(String) } end
 
-def is_op_return? # is this an op_return script
- @chunks[0] == OP_RETURN && @chunks.size <= 2 end
+def is_op_return?() @chunks[0] == OP_RETURN && @chunks.size <= 2 end # is this an op_return script
 
 # Verify the script is only pushing data onto the stack
-def is_push_only?(script_data=nil)
- check_pushes(true, false, (script_data||@input_script)) end
+def is_push_only?(script_data=nil) check_pushes(true, false, (script_data||@input_script)) end
 
 # Make sure opcodes used to push data match their intended length ranges
 def pushes_are_canonical?(script_data=nil)
@@ -333,8 +325,7 @@ def get_pubkey
  is_pubkey? ? @chunks[0].unpack("H*")[0] : nil end
 
 # get the pubkey address for this pubkey script
-def get_pubkey_address
- Bitcoin.pubkey_to_address(get_pubkey) end
+def get_pubkey_address() Bitcoin.pubkey_to_address(get_pubkey) end
 
 # get the hash160 for this hash160
 def get_hash160
@@ -342,12 +333,10 @@ def get_hash160
  return Bitcoin.hash160(get_pubkey)        if is_pubkey? end
 
 # get the hash160 address for this hash160 script
-def get_hash160_address
- Bitcoin.hash160_to_address(get_hash160) end
+def get_hash160_address() Bitcoin.hash160_to_address(get_hash160) end
 
 # get the public keys for this multisig script
-def get_multisig_pubkeys
- 1.upto(@chunks[-2] - 80).map{|i| @chunks[i] } end
+def get_multisig_pubkeys() 1.upto(@chunks[-2] - 80).map{|i| @chunks[i] } end
 
 # get the pubkey addresses for this multisig script
 def get_multisig_addresses
@@ -376,8 +365,7 @@ def get_address
 
 # generate pubkey tx script for given +pubkey+. returns a raw binary script of the form:
 #  <pubkey> OP_CHECKSIG
-def self.to_pubkey_script(pubkey)
- pack_pushdata([pubkey].pack("H*")) + [ OP_CHECKSIG ].pack("C") end
+def self.to_pubkey_script(pubkey) pack_pushdata([pubkey].pack("H*")) + [ OP_CHECKSIG ].pack("C") end
 
 # generate hash160 tx for given +address+. returns a raw binary script of the form:
 #  OP_DUP OP_HASH160 <hash160> OP_EQUALVERIFY OP_CHECKSIG
@@ -388,7 +376,8 @@ def self.to_hash160_script(hash160)
 
 # generate p2wpkh tx for given +address+. returns a raw binary script of the form:
 # 0 <hash160>
-#def self.to_witness_hash160_script(hash160) # DEPRECATE
+ # DEPRECATED
+# def self.to_witness_hash160_script(hash160)
 # return nil  unless hash160
 # to_witness_script(0, hash160) end
 
@@ -397,11 +386,12 @@ def self.to_hash160_script(hash160)
 def self.to_address_script(address)
  hash160 = Bitcoin.hash160_from_address(address)
  case Bitcoin.address_type(address)
- when :hash160; to_hash160_script(hash160) end end
+ when :hash160
+  to_hash160_script(hash160) end end
 
 # generate multisig output script for given +pubkeys+, expecting +m+ signatures.
 # returns a raw binary script of the form:
-#  <m> <pubkey> [<pubkey> ...] <n_pubkeys> OP_CHECKMULTISIG
+# <m> <pubkey> [<pubkey> ...] <n_pubkeys> OP_CHECKMULTISIG
 def self.to_multisig_script(m, *pubkeys)
  raise "invalid m-of-n number" unless [m, pubkeys.size].all?{|i| (0..20).include?(i) }
  raise "invalid m-of-n number" if pubkeys.size < m
@@ -425,12 +415,7 @@ def self.to_pubkey_script_sig(signature, pubkey, hash_type = SIGHASH_TYPE[:all])
   when "\x04";         65
   when "\x02", "\x03"; 33 end
  raise "pubkey is not in escaped hex, binary form: #{pubkey.inspect}" if !expected_size || pubkey.bytesize != expected_size
- return buf + pack_pushdata(pubkey) end # returns a raw binary script sig of the form:  <signature> [<pubkey>]
-
-# alias for #to_pubkey_script_sig
-def self.to_signature_pubkey_script(*a)
- puts 'DEPRECATED alias: to_signature_pubkey_script'
- to_pubkey_script_sig(*a) end
+ return buf + pack_pushdata(pubkey) end
 
 # generate input script sig spending a multisig output script.
 # returns a raw binary script sig of the form:  OP_0 <sig> [<sig> ...]
@@ -451,8 +436,7 @@ def self.add_sig_to_multisig_script_sig(sig, script_sig, hash_type = SIGHASH_TYP
 
 # generate input script sig spending a multisig output script.
 # returns a raw binary script sig of the form: OP_0 <sig> [<sig> ...] <redeem_script>
-def self.to_multisig_script_sig(redeem_script, *sigs)
- to_multisig_script_sig(*sigs.flatten) + pack_pushdata(redeem_script) end
+def self.to_multisig_script_sig(redeem_script, *sigs) to_multisig_script_sig(*sigs.flatten) + pack_pushdata(redeem_script) end
 
 # Sort signatures in the given +script_sig+ according to the order of pubkeys in
 # the redeem script. Also needs the +sig_hash+ to match signatures to pubkeys.
@@ -478,11 +462,10 @@ def get_keys_provided
  return false  unless is_multisig?
  @chunks[-2] - 80 end
 
-def codeseparator_count
- @chunks.select{|c|c == Bitcoin::Script::OP_CODESEPARATOR}.length end
+def codeseparator_count() @chunks.select{|c|c == Bitcoin::Script::OP_CODESEPARATOR}.length end
 
 # This matches CScript::GetSigOpCount(bool fAccurate)
-# Note: this does not cover P2SH script which is to be unserialized
+# Note: this does not cover P2SH script which is to be unserialized DEPRECATION REVIEW!!!
 #  and checked explicitly when validating blocks.
 def sigops_count_accurate(is_accurate)
  count = 0
@@ -545,7 +528,9 @@ def codehash_script(opcode)
 # This is used by Protocol::Tx#verify_input_signature
 def op_checksig(check_callback, opts={})
  return invalid if @stack.size < 2
- pubkey = cast_to_string(@stack.pop)
+ popped = @stack.pop
+ pubkey = cast_to_string(popped)
+ puts "pubkey: #{pubkey.inspect}"
  return (@stack << 0) unless Bitcoin::Script.check_pubkey_encoding?(pubkey, opts)
  drop_sigs = [ cast_to_string(@stack[-1]) ]
  signature = cast_to_string(@stack.pop)
@@ -553,9 +538,8 @@ def op_checksig(check_callback, opts={})
  return (@stack << 0) if signature == ""
  sig, hash_type = parse_sig(signature)
  subscript = sighash_subscript(drop_sigs, opts)
- if check_callback == nil # for tests
-  @stack << 1
- else @stack << ((check_callback.call(pubkey, sig, hash_type, subscript) == true) ? 1 : 0) end end # real signature check callback
+ if check_callback == nil then @stack << 1 # for tests
+ else @stack << ((check_callback.call(pubkey, sig, hash_type, subscript) == true) ? 1 : 0) end end # real signature check callback from Tx
 
 def sighash_subscript(drop_sigs, opts = {})
  if opts[:fork_id]

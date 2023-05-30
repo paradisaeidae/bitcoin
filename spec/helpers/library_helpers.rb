@@ -7,4 +7,5 @@ LIBSECP256K1_ENVVAR = 'SECP256K1_LIB_PATH'.freeze
 def self.configure_libsecp256k1
  return if ENV[LIBSECP256K1_ENVVAR]
  return unless File.exist?('secp256k1.so')
- ENV[LIBSECP256K1_ENVVAR] = File.join(Dir.pwd, 'secp256k1.so') end end
+ ENV[LIBSECP256K1_ENVVAR] = File.join(Dir.pwd, 'secp256k1.so')
+ puts "Loading secp25 from #{ENV[LIBSECP256K1_ENVVAR]}" end end
