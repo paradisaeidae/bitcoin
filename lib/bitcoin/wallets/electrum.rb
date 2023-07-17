@@ -3,12 +3,12 @@
 # https://ozanyurtseven.wordpress.com/2015/04/29/hierarchical-deterministic-wallets-bip0032bip0044-in-ruby/
 module Electrum
 class Wif_rec < ::BinData::Record
- #attr_accessor :network, :p_key_str, :compression, :checksum
  endian :big
  uint8  :network,     length: 1    # Can test against decimal. 239 for testnet
  string :p_key_str,   length: 32   # 256-bit integer (32 bytes)
  uint8  :compression, length: 1    # BSV public keys are always compressed.
  string :checksum,    length: 4
+ #attr_accessor :network, :p_key_str, :compression, :checksum
  def each_pair() end
  def to_s() Base58.encode(to_binary_s) end end # Convert the WIF fields to a WIF string
 

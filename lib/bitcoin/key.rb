@@ -25,10 +25,9 @@ MAX_PRIV_KEY_MOD_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25
  def from_base58(wif)
   wif_key = Electrum::Wif.new wif
   @ossl_key = wif_key.p_key.ec_key
-
-  @priv_hex = Bitcoin.decode_base58(wif) # "ef3bcd23ccab9a6134231608d3066f92a383120544a7cda3a1055559542c4176ce0129cd0434"
-  compressed = hex.size == 76
-  version, key, flag, checksum = hex.unpack("a2a64a#{compressed ? 2 : 0}a8")
+  @priv_hex = Bitcoin.base58_to_hex(wif) # "ef3bcd23ccab9a6134231608d3066f92a383120544a7cda3a1055559542c4176ce0129cd0434"
+  compressed = @priv_hex.size == 76
+  version, key, flag, checksum = @priv_hex.unpack("a2a64a#{compressed ? 2 : 0}a8")
   raise "Invalid version"   unless version == Bitcoin.network[:privkey_version]
   raise "Invalid checksum"  unless Bitcoin.checksum(version + key + flag) == checksum
   @ossl_key end
@@ -64,7 +63,7 @@ MAX_PRIV_KEY_MOD_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25
  def pub=(pub)    set_pub(pub) end                        # Set the public key (in hex).
  def hash160()    Bitcoin.hash160(pub) end                # Get the hash160 of the public key.
  def addr()       Bitcoin.hash160_to_address(hash160) end # Get the address corresponding to the public key.
- 
+
  # Sign +data+ with the key.
  #  key1 = Bitcoin::Key.generate
  #  sig = key1.sign("some data")
@@ -136,7 +135,7 @@ MAX_PRIV_KEY_MOD_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25
  # https://github.com/bitcoin/bips/blob/master/bip-0038.mediawiki # See also #to_bip38
  def self.from_bip38(encrypted_privkey, passphrase)
   version, flagbyte, addresshash, encryptedhalf1, encryptedhalf2, checksum =
-   [ Bitcoin.decode_base58(encrypted_privkey) ].pack("H*").unpack("a2aa4a16a16a4")
+   [ Bitcoin.base58_to_hex(encrypted_privkey) ].pack("H*").unpack("a2aa4a16a16a4")
   compressed = (flagbyte == "\xe0") ? true : false
   raise "Invalid version"   unless version == "\x01\x42"
   raise "Invalid checksum"  unless Digest::SHA256.digest(Digest::SHA256.digest(version + flagbyte + addresshash + encryptedhalf1 + encryptedhalf2))[0...4] == checksum

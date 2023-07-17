@@ -71,23 +71,23 @@ def to_payload
  payload << @parent_block.to_payload
  payload end
 
-def self.from_hash(h)
+def self.from_hasH(h)
  aux_pow = new(nil)
  aux_pow.instance_eval do
-  @coinbase_tx = P::Tx.from_hash(h['coinbase_tx'])
+  @coinbase_tx = P::Tx.from_hasH(h['coinbase_tx'])
   @block_hash = h['block_hash'].htb
   @coinbase_branch = h['coinbase_branch']
   @coinbase_index = h['coinbase_index']
   @chain_branch = h['chain_branch']
   @chain_index = h['chain_index']
-  @parent_block = P::Block.from_hash(h['parent_block']) end
+  @parent_block = P::Block.from_hasH(h['parent_block']) end
  aux_pow end
 
 def to_hash
- { 'coinbase_tx' => @coinbase_tx.to_hash,
+ { 'coinbase_tx' => @coinbase_tx.to_hasH,
   'block_hash' => @block_hash.hth,
   'coinbase_branch' => @coinbase_branch,
   'coinbase_index' => @coinbase_index,
   'chain_branch' => @chain_branch,
   'chain_index' => @chain_index,
-  'parent_block' => @parent_block.to_hash } end end end end
+  'parent_block' => @parent_block.to_hasH } end end end end

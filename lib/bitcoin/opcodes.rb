@@ -2,7 +2,6 @@
 https://github.com/bitcoin-sv-specs
 https://ramonquesada.com/glossary/opcodes-used-in-bitcoin-script/
 https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/script/opcodes.cpp
-https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/script/opcodes.cpp
 
 November 2018 additions:
 Word 	OpCode 	Hex 	Input 	Output 	Description
@@ -15,7 +14,6 @@ OP_DIV 	    150 	0x96 	a b 	out 	a is divided by b
 OP_MOD  	151 	0x97 	a b 	out 	return the remainder after a is divided by b
 OP_NUM2BIN 	128 	0x80 	a b 	out 	convert numeric value a into byte sequence of length b
 OP_BIN2NUM 	129 	0x81 	x 	out 	convert byte sequence x into a numeric value
-
 
 Bitcoin ABC, the full node implementation developed by Amaury Séchet and currently used by most miners, 
 has announced plans to activate, among other changes, two new opcodes during the protocol’s November hard fork 
@@ -158,40 +156,38 @@ OP_INVALIDOPCODE = 0xff
 OPCODES = Hash[*constants.grep(/^OP_/).map{|i| [const_get(i), i.to_s] }.flatten]
 OPCODES[0] = "0"
 OPCODES[81] = "1"
-OPCODES_ALIAS = {
- "OP_TRUE"  => OP_1,
- "OP_FALSE" => OP_0,
- "OP_EVAL" => OP_NOP1,
- "OP_CHECKHASHVERIFY" => OP_NOP2, }
+OPCODES_ALIAS = { "OP_TRUE"  => OP_1, "OP_FALSE" => OP_0, "OP_EVAL" => OP_NOP1, "OP_CHECKHASHVERIFY" => OP_NOP2, }
 DISABLED_OPCODES = [
  OP_CAT, OP_SUBSTR, OP_LEFT, OP_RIGHT,
  OP_AND, OP_OR, OP_XOR, OP_2MUL, OP_2DIV,
  OP_DIV, OP_MOD ] #  OP_MUL, OP_LSHIFT, OP_RSHIFT, and OP_INVERT Restored
 OP_2_16 = (82..96).to_a
 OPCODES_PARSE_BINARY = {}
-OPCODES.each{|k,v|       OPCODES_PARSE_BINARY[k] = v }
-OP_2_16.each{|i|         OPCODES_PARSE_BINARY[i] = (OP_2_16.index(i)+2).to_s }
+OPCODES.each{ |k, v|       OPCODES_PARSE_BINARY[k] = v }
+OP_2_16.each{ |i|          OPCODES_PARSE_BINARY[i] = (OP_2_16.index(i)+2).to_s }
 OPCODES_PARSE_STRING = {}
-OPCODES.each{|k,v|       OPCODES_PARSE_STRING[v] = k }
-OPCODES_ALIAS.each{|k,v| OPCODES_PARSE_STRING[k] = v }
-2.upto(16).each{|i|      OPCODES_PARSE_STRING["OP_#{i}"] = OP_2_16[i-2] }
-2.upto(16).each{|i|      OPCODES_PARSE_STRING["#{i}"   ] = OP_2_16[i-2] }
-[1,2,4].each{|i|         OPCODES_PARSE_STRING.delete("OP_PUSHDATA#{i}") }
+OPCODES.each{ |k, v|       OPCODES_PARSE_STRING[v] = k }
+OPCODES_ALIAS.each{ |k, v| OPCODES_PARSE_STRING[k] = v }
+2.upto(16).each{ |i|       OPCODES_PARSE_STRING["OP_#{i}"] = OP_2_16[i-2] }
+2.upto(16).each{ |i|       OPCODES_PARSE_STRING["#{i}"   ] = OP_2_16[i-2] }
+[1,2,4].each{|i|           OPCODES_PARSE_STRING.delete("OP_PUSHDATA#{i}") }
+
+# https://wiki.bitcoinsv.io/index.php/SIGHASH_flags
 SIGHASH_TYPE = { # https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/script/sighashtype.h
- all: 1,
- none: 2,
- single: 3,
- forkid: 64,
- anyonecanpay: 128
-}.freeze
+ forkid_DEP: 64,  # Is the decimal of 0x40
+ all: 65,
+ none: 66,
+ single: 67,
+ anyonecanpay: 128,
+ all_none: 194,
+ single_any: 195 }.freeze
 attr_reader :raw, :chunks, :debug, :stack
 
 # Converts OP_{0,1,2,...,16} into 0, 1, 2, ..., 16.
 # Returns nil for other opcodes.
 def self.decode_OP_N(opcode)
  if opcode == OP_0 then return 0 end
- if opcode.is_a?(Integer) && opcode >= OP_1 && opcode <= OP_16
-  return opcode - (OP_1 - 1);
+ if opcode.is_a?(Integer) && opcode >= OP_1 && opcode <= OP_16 then return opcode - (OP_1 - 1)
  else nil end end
 
 =begin
@@ -220,8 +216,7 @@ def op_nop14;  end
 def op_nop15;  end
 def op_nop16;  end
 
-def op_dup # Duplicates the top stack item.
- @stack << (@stack[-1].dup rescue @stack[-1]) end
+def op_dup() @stack << (@stack[-1].dup rescue @stack[-1]) end # Duplicates the top stack item.
 
 def op_sha256 # The input is hashed using SHA-256.
  buf = pop_string
@@ -231,8 +226,7 @@ def op_sha1 # The input is hashed using SHA-1.
  buf = pop_string
  @stack << Digest::SHA1.digest(buf) end
 
-# The input is hashed twice: first with SHA-256 and then with RIPEMD-160.
-def op_hash160
+def op_hash160 # The input is hashed twice: first with SHA-256 and then with RIPEMD-160.
  buf = pop_string
  @stack << Digest::RMD160.digest(Digest::SHA256.digest(buf)) end
 
@@ -245,19 +239,14 @@ def op_hash256 # The input is hashed two times with SHA-256.
  @stack << Digest::SHA256.digest(Digest::SHA256.digest(buf)) end
 
 # Puts the input onto the top of the alt stack. Removes it from the main stack.
-def op_toaltstack
- @stack_alt << @stack.pop end
-
+def op_toaltstack() @stack_alt << @stack.pop end
 # Puts the input onto the top of the main stack. Removes it from the alt stack.
-def op_fromaltstack
- @stack << @stack_alt.pop end
+def op_fromaltstack() @stack << @stack_alt.pop end
 
 # The item at the top of the stack is copied and inserted before the second-to-top item.
-def op_tuck
- @stack[-2..-1] = [ @stack[-1], *@stack[-2..-1] ] end
-
-def op_swap # The top two items on the stack are swapped.
- @stack[-2..-1] = @stack[-2..-1].reverse if @stack[-2] end
+def op_tuck() @stack[-2..-1] = [ @stack[-1], *@stack[-2..-1] ] end
+# The top two items on the stack are swapped.
+def op_swap() @stack[-2..-1] = @stack[-2..-1].reverse if @stack[-2] end
 
 def op_booland # If both a and b are not 0, the output is 1. Otherwise 0.
  a, b = pop_int(2)
@@ -323,8 +312,7 @@ def op_negate # The sign of the input is flipped.
  a = pop_int
  @stack << -a end
 
-def op_drop # Removes the top stack item.
- @stack.pop end
+def op_drop() @stack.pop end # Removes the top stack item.
 
 def op_equal # Returns 1 if the inputs are exactly equal, 0 otherwise.
  a, b = pop_string(2)
@@ -342,17 +330,10 @@ def op_equalverify # Same as OP_EQUAL, but runs OP_VERIFY afterward.
  op_equal
  op_verify end
 
-def op_0 # An empty array of bytes is pushed onto the stack.
- @stack << "" end # []
-
-def op_1 # The number 1 is pushed onto the stack. Same as OP_TRUE
- @stack << 1 end
-
-def op_min # Returns the smaller of a and b.
- @stack << pop_int(2).min end
-
-def op_max # Returns the larger of a and b.
- @stack << pop_int(2).max end
+def op_0()   @stack << "" end# An empty array of bytes is pushed onto the stack. []
+def op_1()   @stack << 1 end# The number 1 is pushed onto the stack. Same as OP_TRUE
+def op_min() @stack << pop_int(2).min end # Returns the smaller of a and b.
+def op_max() @stack << pop_int(2).max end # Returns the larger of a and b.
 
 def op_2over # Copies the pair of items two spaces back in the stack to the front.
  @stack << @stack[-4]
@@ -363,15 +344,9 @@ def op_2swap # Swaps the top two pairs of items.
  p2 = @stack.pop(2)
  @stack += p1 += p2 end
 
-def op_ifdup # If the input is true, duplicate it.
- if cast_to_bool(@stack.last) == true
-  @stack << @stack.last end end
-
-def op_1negate # The number -1 is pushed onto the stack.
- @stack << -1 end
-
-def op_depth # Puts the number of stack items onto the stack.
- @stack << @stack.size end
+def op_ifdup()   if cast_to_bool(@stack.last) == true then @stack << @stack.last end end # If the input is true, duplicate it.
+def op_1negate() @stack << -1 end # The number -1 is pushed onto the stack.
+def op_depth()   @stack << @stack.size end # Puts the number of stack items onto the stack.
 
 # Returns 1 if x is within the specified range (left-inclusive), 0 otherwise.
 def op_within
@@ -386,8 +361,7 @@ def op_numnotequal # Returns 1 if the numbers are not equal, 0 otherwise.
  a, b = pop_int(2)
  @stack << (a != b ? 1 : 0) end
 
-def op_return # Marks transaction as invalid.
-  @script_invalid = true; nil end
+def op_return() @script_invalid = true; nil end # Marks transaction as invalid.
 
 def op_over # Copies the second-to-top stack item to the top.
  item = @stack[-2]
@@ -443,17 +417,10 @@ def op_rot # The top three items on the stack are rotated to the left.
  return if @stack.size < 3
  @stack[-3..-1] = [ @stack[-2], @stack[-1], @stack[-3] ] end
 
-def op_2drop # Removes the top two stack items.
- @stack.pop(2) end
-
-def op_2dup # Duplicates the top two stack items.
- @stack.push(*@stack[-2..-1]) end
-
-def op_3dup # Duplicates the top three stack items.
- @stack.push(*@stack[-3..-1]) end
-
-def op_nip # Removes the second-to-top stack item.
- @stack.delete_at(-2) end
+def op_2drop() @stack.pop(2)               end # Removes the top two stack items.
+def op_2dup() @stack.push(*@stack[-2..-1]) end # Duplicates the top two stack items.
+def op_3dup() @stack.push(*@stack[-3..-1]) end # Duplicates the top three stack items.
+def op_nip() @stack.delete_at(-2)          end # Removes the second-to-top stack item.
 
 # Returns the length of the input string.
 def op_size
@@ -464,8 +431,7 @@ def op_size
  @stack << size end
 
 # Transaction is invalid unless occuring in an unexecuted OP_IF branch
-def op_ver
- invalid if @do_exec end
+def op_ver() invalid if @do_exec end
 
 # Same as OP_NUMEQUAL, but runs OP_VERIFY afterward.
 def op_numequalverify
@@ -536,8 +502,6 @@ def op_checkmultisigverify(check_callback, opts={})
  op_checkmultisig(check_callback, opts)
  op_verify end
 
-OPCODES_METHOD = Hash[*instance_methods.grep(/^op_/).map{|m|
- [ ( OPCODES.find{|k,v| v == m.to_s.upcase }.first rescue nil), m ]
-  }.flatten]
+OPCODES_METHOD = Hash[*instance_methods.grep(/^op_/).map{ | m | [ ( OPCODES.find{|k,v| v == m.to_s.upcase }.first rescue nil), m ] }.flatten]
 OPCODES_METHOD[0]  = :op_0
 OPCODES_METHOD[81] = :op_1 end

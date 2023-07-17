@@ -63,13 +63,15 @@ RUBY
  def self.init
   @loaded ||= false
   return if @loaded
-  lib_path = [ ENV['SECP256K1_LIB_PATH'], 'libsecp256k1.so' ].find { |f| File.exist?(f.to_s) }
-  lib_path = '/MakeStore/MakeFromHere/SECP256k1/secp256k1-0.3.1/.libs/libsecp256k1.so.2.0.1'
-
-  puts "Loading secp256k1 from: #{lib_path}"
+  gem_path = File.dirname(__dir__).gsub!('/lib/bitcoin','')
+  #lib_path = [ ENV['SECP256K1_LIB_PATH'], 'libsecp256k1.so' ].find { |f| File.exist?(f.to_s) }
+  lib_path = gem_path + '/libsecp256k1/lib/libsecp256k1.so'
+  raise 'Cannot find SECP lib' unless File.exist?(lib_path)
   ffi_load_functions(lib_path)
-  puts "Found functions: #{self.ffi_libraries.inspect}"
-  @loaded = true end
+  @loaded = true
+  rescue
+  debugger
+ end
 
  def self.with_context(flags = nil, seed = nil)
   init
@@ -129,7 +131,7 @@ RUBY
     raise 'secp256k1_ecdsa_sign failed.' if tries >= max
     tries += 1
     ret = secp256k1_ecdsa_sign(context, internal_signature, msg32, seckey, nil, nil) end
-   signature = FFI::MemoryPointer.new(:uchar, 72)
+   signature =     FFI::MemoryPointer.new(:uchar, 72)
    signature_len = FFI::MemoryPointer.new(:uint64).put_uint64(0, 72)
    result = secp256k1_ecdsa_signature_serialize_der( context, signature, signature_len, internal_signature )
    raise 'secp256k1_ecdsa_signature_serialize_der failed' unless result == 1
@@ -157,6 +159,12 @@ RUBY
     result = secp256k1_ecdsa_verify(context, internal_signature, msg32, internal_pubkey)
 
     return result == 1 end end
+
+  def self.normalize(sig) # libsecp256k1's ECDSA verification requires lower-S signatures, which are enforced in Bitcoin, so normalize them.
+   with_context do |context| return false if sig.bytesize.zero?
+    signature = FFI::MemoryPointer.new(:uchar, sig.bytesize).put_bytes(0, sig)
+    secp256k1_ecdsa_signature_normalize(context, signature, signature)
+    return signature.read_string end end
 
  def self.sign_compact(message, priv_key, compressed = true) # DEPRECATABLE
   with_context do |context|

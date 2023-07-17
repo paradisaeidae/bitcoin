@@ -3,6 +3,17 @@ module Bitcoin;module Protocol # TxOut section of https://en.bitcoin.it/wiki/Pro
 class TxOut_rec < ::BinData::Record
  # https://developer.bitcoin.org/reference/transactions.html
 end
+def txout_from_io(buf)
+ txout = Bitcoin::Protocol::TxOut.new
+ txout.parse_data_from_io(buf)
+ txout end
+
+def txout_from_hasH(output)
+ amount = output['value']   # ? output['value'].delete('.').to_i : output['amount']
+ script = Script.binary_from_string(output['scriptPubKey']['asm'] ) #  || output['script'])
+ Bitcoin::Protocol::TxOut.new(amount, script) end
+
+module_function :txout_from_io, :txout_from_hasH
 class TxOut
 attr_accessor :value, :redeem_script      # output value (in base units; "satoshi")
 attr_reader :pk_script, :pk_script_length # pk_script output Script
@@ -52,7 +63,7 @@ def to_hash(options = {})
   h['address'] = addrs.first if addrs.size == 1 end
  h end
 
-def self.from_hash(output)
+def self.from_hasH(output)
  amount = output['value']   # ? output['value'].delete('.').to_i : output['amount']
  script = Script.binary_from_string(output['scriptPubKey']['asm'] ) #  || output['script'])
  new(amount, script) end

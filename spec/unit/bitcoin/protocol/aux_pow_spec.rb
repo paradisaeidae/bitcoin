@@ -36,7 +36,7 @@ describe Bitcoin::Protocol::AuxPow do
   end
 
   it '#to_hash' do
-    expect(Bitcoin::Protocol::Block.from_hash(blk.to_hash).to_payload).to eq(data)
+    expect(Bitcoin::Protocol::Block.from_hasH(blk.to_hasH).to_payload).to eq(data)
   end
 
   it '#to_json' do

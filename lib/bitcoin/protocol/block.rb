@@ -122,15 +122,15 @@ def to_payload
  head end
 
 # convert to ruby hash (see also #from_hash)
-def to_hash(options = {})
+def to_hasH(options = {})
  h = {
   'hash' => @hash, 'ver' => @ver,
   'prev_block' => @prev_block_hash.reverse_hth, 'mrkl_root' => @mrkl_root.reverse_hth,
   'time' => @time, 'bits' => @bits, 'nonce' => @nonce,
   'n_tx' => @tx.size, 'size' => (@payload || to_payload).bytesize,
-  'tx' => @tx.map { |i| i.to_hash(options) },
+  'tx' => @tx.map { |i| i.to_hasH(options) },
   'mrkl_tree' => Bitcoin.hash_mrkl_tree(@tx.map(&:hash)) }
- h['aux_pow'] = @aux_pow.to_hash if @aux_pow
+ h['aux_pow'] = @aux_pow.to_hasH if @aux_pow
  h end
 
 def size
@@ -171,7 +171,7 @@ def to_json_file(path)
  File.open(path, 'wb') { |f| f.print to_json; } end
 
 # parse ruby hash (see also #to_hash)
-def self.from_hash(h, do_raise = true)
+def self.from_hasH(h, do_raise = true)
  blk = new(nil)
  blk.instance_eval do
   @ver, @time, @bits, @nonce = h.values_at('ver', 'time', 'bits', 'nonce')
@@ -179,15 +179,14 @@ def self.from_hash(h, do_raise = true)
   if do_raise && h['hash'] != recalc_block_hash
     raise "Block hash mismatch! Claimed: #{h['hash']}, Actual: #{@hash}"
   end
-  @aux_pow = AuxPow.from_hash(h['aux_pow']) if h['aux_pow']
-  h['tx'].each { |tx| @tx << Tx.from_hash(tx, do_raise) }
+  @aux_pow = AuxPow.from_hasH(h['aux_pow']) if h['aux_pow']
+  h['tx'].each { |tx| @tx << Tx.from_hasH(tx, do_raise) }
   if h['tx'].any? && do_raise && !verify_mrkl_root
    raise "Block merkle root mismatch! Block: #{h['hash']}" end end
  blk end
 
-def self.binary_from_hash(h) # convert ruby hash to raw binary
+def self.binary_from_hasH(h) # convert ruby hash to raw binary
  from_hash(h).to_payload end
-
 
 def self.from_json(json_string) # parse json representation (see also #to_json)
  from_hash(JSON.parse(json_string)) end

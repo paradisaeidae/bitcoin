@@ -1,5 +1,9 @@
 require_relative '../bitcoin'
 require_relative 'opcodes'
+#class ScriptError < StandardError
+#  def initialize(msg="Script issue", exception_type="")
+#    @exception_type = exception_type
+#    super(msg) end end
 class Bitcoin::Script
 include Opcodes
 # create a new script. +bytes+ is typically input_script + output_script
@@ -8,8 +12,7 @@ def initialize(input_script, previous_output_script=nil)
  @input_script, @previous_output_script = input_script, previous_output_script
  @parse_invalid = nil
  @script_codeseparator_index = nil
- @raw = if @previous_output_script
-  @input_script + [ Bitcoin::Script::OP_CODESEPARATOR ].pack("C") + @previous_output_script
+ @raw = if @previous_output_script then  @input_script + [ Bitcoin::Script::OP_CODESEPARATOR ].pack("C") + @previous_output_script
   else @input_script end
  @chunks = parse(@input_script)
  if previous_output_script
@@ -77,8 +80,7 @@ def to_string(chunks=nil) # string representation of the script
   string << " " unless idx == 0
   string << case i
   when Integer
-   if opcode = OPCODES_PARSE_BINARY[i] then opcode
-   else "(opcode-#{i})" end
+   if opcode = OPCODES_PARSE_BINARY[i] then opcode else "(opcode-#{i})" end
   when String
    if i.bitcoin_pushdata then "#{i.bitcoin_pushdata}:#{i.bitcoin_pushdata_length}:".force_encoding('binary') + i.unpack("H*")[0]
    else i.unpack("H*")[0] end end }
@@ -107,7 +109,7 @@ def to_binary_without_signatures(drop_signatures, chunks=nil)
 def subscript_codeseparator(separator_index)
  buf = []
  process_separator_index = 0
- (chunks || @chunks).each{|chunk|
+ (chunks || @chunks).each{ |chunk|
   buf << chunk if process_separator_index == separator_index
   process_separator_index += 1 if chunk == OP_CODESEPARATOR and process_separator_index < separator_index }
  to_binary(buf) end
@@ -374,13 +376,6 @@ def self.to_hash160_script(hash160)
  #  DUP   HASH160  length  hash160    EQUALVERIFY  CHECKSIG
  [ ["76", "a9",    "14",   hash160,   "88",        "ac"].join ].pack("H*") end
 
-# generate p2wpkh tx for given +address+. returns a raw binary script of the form:
-# 0 <hash160>
- # DEPRECATED
-# def self.to_witness_hash160_script(hash160)
-# return nil  unless hash160
-# to_witness_script(0, hash160) end
-
 # generate hash160 depending on the type of the given +address+.
 # see #to_hash160_script
 def self.to_address_script(address)
@@ -414,7 +409,7 @@ def self.to_pubkey_script_sig(signature, pubkey, hash_type = SIGHASH_TYPE[:all])
  expected_size = case pubkey[0]
   when "\x04";         65
   when "\x02", "\x03"; 33 end
- raise "pubkey is not in escaped hex, binary form: #{pubkey.inspect}" if !expected_size || pubkey.bytesize != expected_size
+ raise "pubkey is not in escaped hex, binary form: #{pubkey.inspect} bytesize: #{pubkey.bytesize}" if !expected_size || pubkey.bytesize != expected_size
  return buf + pack_pushdata(pubkey) end
 
 # generate input script sig spending a multisig output script.
@@ -446,9 +441,9 @@ def self.sort_multisig_signatures script_sig, sig_hash
  pubkeys = redeem_script.get_multisig_pubkeys
  # find the pubkey for each signature by trying to verify it
  sigs = Hash[ script.chunks[1...-1].map.with_index do |sig, idx|
-  pubkey = pubkeys.map { |key|
+  pubkey = pubkeys.map { | key |
    Bitcoin::Key.new(nil, key.hth).verify(sig_hash, sig) ? key : nil }.compact.first
-  raise "Key for signature ##{idx} not found in redeem script!"  unless pubkey
+  raise "Key for signature ##{idx} not found in redeem script!" unless pubkey
   [pubkey, sig]
  end ]
  [OP_0].pack("C*") + pubkeys.map {|k| sigs[k] ? pack_pushdata(sigs[k]) : nil }.join +
@@ -474,8 +469,7 @@ def sigops_count_accurate(is_accurate)
   if chunk == OP_CHECKSIG || chunk == OP_CHECKSIGVERIFY then count += 1
   elsif chunk == OP_CHECKMULTISIG || chunk == OP_CHECKMULTISIGVERIFY
    # Accurate mode counts exact number of pubkeys required (not signatures, but pubkeys!).
-   # Only used in P2SH scripts.
-   # Inaccurate mode counts every multisig as 20 signatures.
+   # Only used in P2SH scripts. Inaccurate mode counts every multisig as 20 signatures.
    if is_accurate && last_opcode && last_opcode.is_a?(Integer) && last_opcode >= OP_1 && last_opcode <= OP_16
     count += ::Bitcoin::Script.decode_OP_N(last_opcode)
    else count += 20 end end
@@ -505,8 +499,8 @@ def cast_to_string(buf)
  return (invalid; "") unless buf
  case buf
  when Numeric; OpenSSL::BN.new(buf.to_s).to_s(0)[4..-1].reverse
- when String; buf;
- else; raise TypeError, 'cast_to_string: failed to cast: %s (%s)' % [buf, buf.class] end end
+ when String;  buf;
+ else;         raise TypeError, 'cast_to_string: failed to cast: %s (%s)' % [buf, buf.class] end end
 
 def cast_to_bool(buf)
  buf = cast_to_string(buf).unpack("C*")
@@ -517,20 +511,18 @@ def cast_to_bool(buf)
    else return true end end }
  return false end
 
-def codehash_script(opcode)
- # CScript scriptCode(pbegincodehash, pend);
+def codehash_script(opcode) # CScript scriptCode(pbegincodehash, pend);
  script    = to_string(@chunks[(@codehash_start||0)...@chunks.size-@chunks.reverse.index(opcode)])
  checkhash = Bitcoin.hash160(Bitcoin::Script.binary_from_string(script).unpack("H*")[0])
  [script, checkhash] end
 
-# do a CHECKSIG operation on the current stack,
-# asking +check_callback+ to do the actual signature verification.
+# do a CHECKSIG operation on the current stack, asking +check_callback+ to do the actual signature verification.
 # This is used by Protocol::Tx#verify_input_signature
 def op_checksig(check_callback, opts={})
  return invalid if @stack.size < 2
  popped = @stack.pop
  pubkey = cast_to_string(popped)
- puts "pubkey: #{pubkey.inspect}"
+ puts "op_checksig: pubkey: #{pubkey.inspect}"
  return (@stack << 0) unless Bitcoin::Script.check_pubkey_encoding?(pubkey, opts)
  drop_sigs = [ cast_to_string(@stack[-1]) ]
  signature = cast_to_string(@stack.pop)
@@ -541,12 +533,13 @@ def op_checksig(check_callback, opts={})
  if check_callback == nil then @stack << 1 # for tests
  else @stack << ((check_callback.call(pubkey, sig, hash_type, subscript) == true) ? 1 : 0) end end # real signature check callback from Tx
 
-def sighash_subscript(drop_sigs, opts = {})
+def sighash_subscript(drop_sigs, opts = {}) # DEPRECATION of opts, now fork is in all SIGHASH_TYPEs
+ puts 'sighash_subscript: Adjustment required: forkid option in opts.'
  if opts[:fork_id]
   drop_sigs.reject! do |signature|
    if signature && signature.size > 0
     _, hash_type = parse_sig(signature) # The underscore adds as a placeholder for the variable matching inside Ruby. It is just as greedy as any named variable, but as it is not named, you cannot access it later on. 
-    (hash_type&SIGHASH_TYPE[:forkid]) != 0 end end end
+    (hash_type & SIGHASH_TYPE[:forkid]) != 0 end end end
  #if inner_p2sh? && @inner_script_code then ::Bitcoin::Script.new(@inner_script_code).to_binary_without_signatures(drop_sigs) else to_binary_without_signatures(drop_sigs) end
  to_binary_without_signatures(drop_sigs) end
 
@@ -565,72 +558,69 @@ def self.is_compressed_or_uncompressed_pub_key?(pubkey)
   return false end # "Non-canonical public key: compressed nor uncompressed" 
  true end
 
-# Loosely matches CheckSignatureEncoding()
+# CheckSignatureEncoding() https://github.com/bitcoin-sv/bitcoin-sv/blob/4d3444909a5a98f129d3d2991bf8f0f7f15d3969/src/script/interpreter.cpp#L262
 def self.check_signature_encoding?(sig, opts={})
  return true  if sig.bytesize == 0
  return false if (opts[:verify_dersig] || opts[:verify_low_s] || opts[:verify_strictenc]) and !is_der_signature?(sig)
  return false if opts[:verify_low_s] && !is_low_der_signature?(sig)
- if opts[:verify_strictenc]
-  return false unless is_defined_hashtype_signature?(sig)
-  hash_type = sig.unpack('C*')[-1]
-  uses_forkid = (hash_type&SIGHASH_TYPE[:forkid]) != 0
-  return false if opts[:fork_id] && !uses_forkid
-  return false if !opts[:fork_id] && uses_forkid end
+ if opts[:verify_strictenc] then return false unless is_defined_hashtype_signature?(sig) end # Removed check for fork.
  true end
 
-# Loosely correlates with IsDERSignature() from interpreter.cpp
+# IsValidSignatureEncoding() from https://github.com/bitcoin-sv/bitcoin-sv/blob/4d3444909a5a98f129d3d2991bf8f0f7f15d3969/src/script/interpreter.cpp#L163
 def self.is_der_signature?(sig)
- return false if sig.bytesize < 9  # Non-canonical signature: too short
- return false if sig.bytesize > 73 # Non-canonical signature: too long
+ issues = ''
+ issues << 'too short, ' if sig.bytesize < 9
+ issues << 'too long, ' if sig.bytesize > 73
  s = sig.unpack("C*")
- return false if s[0] != 0x30     # Non-canonical signature: wrong type
- return false if s[1] != s.size-3 # Non-canonical signature: wrong length marker
+ issues << 'wrong type, ' if s[0] != 0x30
+ issues << 'wrong length marker, ' if s[1] != s.size - 3
  length_r = s[3]
- return false if (5 + length_r) >= s.size # Non-canonical signature: S length misplaced
- length_s = s[5+length_r]
- return false if (length_r + length_s + 7) != s.size # Non-canonical signature: R+S length mismatch
- return false if s[2] != 0x02  # Non-canonical signature: R value type mismatch
- return false if length_r == 0 # Non-canonical signature: R length is zero
+ issues << 'S length misplaced, ' if (5 + length_r) >= s.size
+ length_s = s[5 + length_r]
+ issues << 'R+S length mismatch, ' if (length_r + length_s + 7) != s.size
+ issues << 'R value type not integer, ' if s[2] != 0x02
+ issues << 'R length is zero, ' if length_r == 0
  r_val = s.slice(4, length_r)
- return false if r_val[0] & 0x80 != 0 # Non-canonical signature: R value negative
- return false if length_r > 1 && (r_val[0] == 0x00) && !(r_val[1] & 0x80 != 0) # Non-canonical signature: R value excessively padded
+ issues << 'R value negative, ' if r_val[0] & 0x80 != 0
+ issues << 'R value excessively padded, ' if length_r > 1 && (r_val[0] == 0x00) && !(r_val[1] & 0x80 != 0)
  s_val = s.slice(6 + length_r, length_s)
- return false if s[6 + length_r - 2] != 0x02 # Non-canonical signature: S value type mismatch
- return false if length_s == 0               # Non-canonical signature: S length is zero
- return false if (s_val[0] & 0x80) != 0      # Non-canonical signature: S value negative
- return false if length_s > 1 && (s_val[0] == 0x00) && !(s_val[1] & 0x80) # Non-canonical signature: S value excessively padded
+ issues << 'S value type not integer, ' if s[6 + length_r - 2] != 0x02 # (sig[lenR + 4] != 0x02)
+ issues << 'S length is zero, ' if length_s == 0
+ issues << 'S value negative, ' if (s_val[0] & 0x80) != 0 # (sig[lenR + 6] & 0x80) 
+ issues << 'S value excessively padded' if length_s > 1 && (s_val[0] == 0x00) && !(s_val[1] & 0x80)
+ return issues unless issues == ''
  true end
 
 def self.compare_big_endian(c1, c2) # Compares two arrays of bytes
  c1, c2 = c1.dup, c2.dup            # Clone the arrays
- while c1.size > c2.size
-  return 1 if c1.shift > 0 end
- while c2.size > c1.size
-  return -1 if c2.shift > 0 end
- c1.size.times{|idx| return c1[idx] - c2[idx] if c1[idx] != c2[idx] }
+ while c1.size > c2.size; return 1  if c1.shift > 0 end
+ while c2.size > c1.size; return -1 if c2.shift > 0 end
+ c1.size.times { | idx | return c1[idx] - c2[idx] if c1[idx] != c2[idx] }
  0 end
 
 def self.is_low_der_signature?(sig) # Loosely correlates with IsLowDERSignature() from interpreter.cpp
  s = sig.unpack("C*")
  length_r = s[3]
- length_s = s[5+length_r]
+ length_s = s[5 + length_r]
  s_val = s.slice(6 + length_r, length_s)
  # If the S value is above the order of the curve divided by two, its
- # complement modulo the order could have been used instead, which is
- # one byte shorter when encoded correctly.
- max_mod_half_order = [
-  0x7f,0xff,0xff,0xff,0xff,0xff,0xff,0xff,
-  0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,
-  0x5d,0x57,0x6e,0x73,0x57,0xa4,0x50,0x1d,
-  0xdf,0xe9,0x2f,0x46,0x68,0x1b,0x20,0xa0]
- compare_big_endian(s_val, [0]) > 0 &&
-  compare_big_endian(s_val, max_mod_half_order) <= 0 end
+ # complement modulo the order could have been used instead, less 1 byte.
+ max_mod_half_order = [ 0x7f,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,
+                        0x5d,0x57,0x6e,0x73,0x57,0xa4,0x50,0x1d,0xdf,0xe9,0x2f,0x46,0x68,0x1b,0x20,0xa0]
+ compare_big_endian(s_val, [0]) > 0 && compare_big_endian(s_val, max_mod_half_order) <= 0 end
 
-def self.is_defined_hashtype_signature?(sig)
+def reduce_S_value(signature)
+ s = sig.unpack("C*")
+ length_r = s[3]
+ length_s = s[5+length_r]
+ s_val = s.slice(6 + length_r, length_s)
+ low_s_signature = Bitcoin::Script::Signature.new(r_value, s_value).to_der_canonical end
+
+def self.is_defined_hashtype_signature?(sig) # Check for bounding!!!
  return false if sig.empty?
  s = sig.unpack("C*")
- hash_type = s[-1] & (~(SIGHASH_TYPE[:anyonecanpay] | SIGHASH_TYPE[:forkid]))
- return false if hash_type < SIGHASH_TYPE[:all] || hash_type > SIGHASH_TYPE[:single] # Non-canonical signature: unknown hashtype byte
+ hash_type = s[-1] & (~(SIGHASH_TYPE[:anyonecanpay] | SIGHASH_TYPE[:forkid_DEP]))
+ return false if hash_type < SIGHASH_TYPE[:all] || hash_type > SIGHASH_TYPE[:single_any] # Non-canonical signature: unknown hashtype byte
  true end
 
 private

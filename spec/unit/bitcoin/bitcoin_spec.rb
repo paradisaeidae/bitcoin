@@ -583,7 +583,7 @@ describe Bitcoin do
         Bitcoin.hash160_to_address(Bitcoin.hash160(public_key))
       ).to eq(address) end end
 
-  describe '.encode_base58 / decode_base58' do
+  describe '.encode_base58 / base58_to_hex' do
     it 'passes tests from bitcoin core' do
       # fixtures from: https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/test/base58_tests.cpp
       bin = [
@@ -617,7 +617,7 @@ describe Bitcoin do
       fixtures = bin.zip(out).map { |b, o| [b.unpack('H*')[0], o] }
       fixtures.each do |hex, output|
         expect(Bitcoin.encode_base58(hex)).to eq(output)
-        expect(Bitcoin.decode_base58(output)).to eq(hex) end end end
+        expect(Bitcoin.base58_to_hex(output)).to eq(hex) end end end
 
   it '.block_next_retarget' do
     expect(Bitcoin.block_next_retarget(189_408)).to eq(189_503)

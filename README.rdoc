@@ -27,6 +27,11 @@ Note that some aspects of the library (such as networking, storage, etc.) need
 additional dependencies which are not specified in the gemspec. The core requirements are
 intentionally kept to a minimum, so nobody has to install unneeded dependencies.
 
+== libsecp256k1
+A compiled binary is located withing the gem. This is a linux binary.
+In the folder as such: libsecp256k1/lib/libsecp256k1.so
+Location of this binary is explicit currently.
+
 * +rspec+ to run the specs
 
 If you would like to install using Bundler, put it in your Gemfile and run bundle install
@@ -58,7 +63,7 @@ Parse a Bitcoin::Protocol::Block
  blk = Bitcoin::Protocol::Block.new(raw_block)
  blk.hash #=> 00000000839a8e6886ab5951d76f411475428afc90947ee320161bbf18eb6048
  blk.tx.count #=> 1
- blk.to_hash #=> ...
+ blk.to_hasH #=> ...
  Bitcoin::Protocol::Block.from_json( blk.to_json )
 
 Parse a Bitcoin::Protocol::Tx
@@ -68,7 +73,7 @@ Parse a Bitcoin::Protocol::Tx
  tx.hash #=> 6e9dd16625b62cfcd4bf02edb89ca1f5a8c30c4b1601507090fb28e59f2d02b4
  tx.in.size #=> 1
  tx.out.size #=> 2
- tx.to_hash #=> ...
+ tx.to_hasH #=> ...
  Bitcoin::Protocol::Tx.from_json( tx.to_json )
 
  Bitcoin::Script.new(tx.out[0].pk_script).to_string

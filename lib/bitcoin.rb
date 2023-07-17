@@ -35,7 +35,7 @@ module Util
  
  # verify base58 checksum for given +base58+ data.
  def base58_checksum?(base58)
-  hex = decode_base58(base58) rescue nil
+  hex = base58_to_hex(base58) rescue nil
   return false unless hex
   checksum(hex[0...(version_bytes + 20) * 2]) == hex[-8..-1] end
  alias :address_checksum? :base58_checksum? # Should DEPRECATE! one of them.
@@ -63,10 +63,10 @@ module Util
   when :hash160
    start_idx = version_bytes * 2
    stop_idx = start_idx + 40 # 20 bytes (2 chars per byte)
-   decode_base58(address)[start_idx...stop_idx] end end
+   base58_to_hex(address)[start_idx...stop_idx] end end
  
  def address_type(address) # get type of given +address+.
-  hex = decode_base58(address) rescue nil
+  hex = base58_to_hex(address) rescue nil
   target_size = (version_bytes + 20 + 4) * 2 # version_bytes + 20 bytes hash + 4 bytes checksum
   if hex && hex.bytesize == target_size && address_checksum?(address)
    case hex[0...(version_bytes * 2)]
@@ -113,10 +113,6 @@ module Util
   leading_zero_bytes = (base58_val.match(/^([1]+)/) ? $1 : '').size
   s = ("00"*leading_zero_bytes) + s  if leading_zero_bytes > 0
   s end
- 
- def decode_base58(base58_val)
-  puts 'DEPRECATED, use base58_to_hex(base58_val)'
-  base58_to_hex(base58_val) end
  
  def decode_compact_bits(bits) # target compact bits (int) to bignum hex
   bytes = Array.new(size=((bits >> 24) & 255), 0)
@@ -195,7 +191,9 @@ module Util
   sig = nil
   loop {
    sig = key.dsa_sign_asn1(data)
-   if Script.is_low_der_signature?(sig) then sig else Bitcoin::OpenSSL_EC.signature_to_low_s(sig) end
+   #sig = ::Bitcoin::Secp256k1.sign([data].pack("H*"), key.private_key.to_s) # sig = key.dsa_sign_asn1(data)
+   if Script.is_low_der_signature?(sig) then sig
+    else sig end #::Bitcoin::Secp256k1.normalize(sig) end Normaization is broken, 
    buf = sig + [Script::SIGHASH_TYPE[:all]].pack("C") # is_der_signature expects sig + sighash_type format
    if Script.is_der_signature?(buf) then break
    else p ["Bitcoin#sign_data: invalid der signature generated, trying again.", data.unpack("H*")[0], sig.unpack("H*")[0]] end }
@@ -354,13 +352,10 @@ module  BinaryExtensions
  def hth()         unpack("H*")[0]   end
  def reverse_hth() reverse.hth end end
  
- class ::String; include Bitcoin::BinaryExtensions end
- 
+class ::String; include Bitcoin::BinaryExtensions end
  @network = []
- 
  def self.network() @network_options ||= NETWORKS[@network].dup end
- 
- # Store the copy of network options so we can modify them in tests without breaking the defaults
+  # Store the copy of network options so we can modify them in tests without breaking the defaults
  def self.network_name() @network ||= nil end
  def self.network_project() @network_project ||= nil end
  

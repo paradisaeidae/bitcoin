@@ -70,7 +70,7 @@ describe Bitcoin::Protocol::Tx do
     script.chunks[0].bitcoin_pushdata = Bitcoin::Script::OP_PUSHDATA2
     script.chunks[0].bitcoin_pushdata_length = script.chunks[0].bytesize
     new_tx['in'][0]['scriptSig'] = script.to_string
-    new_tx = Bitcoin::Protocol::Tx.from_hash(new_tx, false)
+    new_tx = Bitcoin::Protocol::Tx.from_hasH(new_tx, false)
     expect(new_tx.hash).not_to eq(tx.hash)
     expect(new_tx.normalized_hash.size).to eq(64)
     expect(new_tx.normalized_hash)
@@ -90,27 +90,27 @@ describe Bitcoin::Protocol::Tx do
 
   it '#to_hash' do
     tx = Bitcoin::Protocol::Tx.new(payloads[0])
-    expect(tx.to_hash.keys)
+    expect(tx.to_hasH.keys)
       .to eq(%w[hash ver vin_sz vout_sz lock_time size in out])
 
     # witness tx
     tx = Bitcoin::Protocol::Tx.new(payloads[3])
-    expect(tx.to_hash.keys)
+    expect(tx.to_hasH.keys)
       .to eq(%w[hash ver vin_sz vout_sz lock_time size in out]) end
 
-  it '.from_hash' do
+  it '.from_hasH' do
     orig_tx = Bitcoin::Protocol::Tx.new(payloads[0])
-    tx = Bitcoin::Protocol::Tx.from_hash(orig_tx.to_hash)
+    tx = Bitcoin::Protocol::Tx.from_hasH(orig_tx.to_hasH)
     expect(tx.payload).to eq(payloads[0])
     expect(tx.to_payload.size).to eq(payloads[0].size)
     expect(tx.to_payload).to eq(payloads[0])
-    expect(tx.to_hash).to eq(orig_tx.to_hash)
-    expect(Bitcoin::Protocol::Tx.binary_from_hash(orig_tx.to_hash))
+    expect(tx.to_hasH).to eq(orig_tx.to_hasH)
+    expect(Bitcoin::Protocol::Tx.binary_from_hasH(orig_tx.to_hasH))
       .to eq(payloads[0])
 
-    h = orig_tx.to_hash.merge('ver' => 123)
+    h = orig_tx.to_hasH.merge('ver' => 123)
     expect do
-      Bitcoin::Protocol::Tx.from_hash(h) end.to raise_error(Exception,
+      Bitcoin::Protocol::Tx.from_hasH(h) end.to raise_error(Exception,
                        'Tx hash mismatch! Claimed: ' \
                        '6e9dd16625b62cfcd4bf02edb89ca1f5a8c30c4b1601507090fb2' \
                        '8e59f2d02b4, Actual: 395cd28c334ac84ed125ec5ccd5bc29ea' \
@@ -118,12 +118,12 @@ describe Bitcoin::Protocol::Tx do
 
   it '.binary_from_hash' do
     orig_tx = Bitcoin::Protocol::Tx.new(payloads[0])
-    expect(Bitcoin::Protocol::Tx.binary_from_hash(orig_tx.to_hash).size).to eq(payloads[0].size)
-    expect(Bitcoin::Protocol::Tx.binary_from_hash(orig_tx.to_hash)).to eq(payloads[0])
+    expect(Bitcoin::Protocol::Tx.binary_from_hasH(orig_tx.to_hasH).size).to eq(payloads[0].size)
+    expect(Bitcoin::Protocol::Tx.binary_from_hasH(orig_tx.to_hasH)).to eq(payloads[0])
 
     orig_tx = Bitcoin::Protocol::Tx.new(payloads[3])
-    expect(Bitcoin::Protocol::Tx.binary_from_hash(orig_tx.to_hash).size).to eq(payloads[3].size)
-    expect(Bitcoin::Protocol::Tx.binary_from_hash(orig_tx.to_hash)).to eq(payloads[3]) end
+    expect(Bitcoin::Protocol::Tx.binary_from_hasH(orig_tx.to_hasH).size).to eq(payloads[3].size)
+    expect(Bitcoin::Protocol::Tx.binary_from_hasH(orig_tx.to_hasH)).to eq(payloads[3]) end
 
   it '#to_json' do
     tx = Bitcoin::Protocol::Tx.new(payloads[0])

@@ -77,7 +77,7 @@ describe Bitcoin::Protocol::Block do
   end
 
   it '#to_hash' do
-    expect(block.to_hash.keys)
+    expect(block.to_hasH.keys)
       .to eq(%w[hash ver prev_block mrkl_root time bits nonce n_tx size tx mrkl_tree])
   end
 
@@ -178,11 +178,11 @@ describe Bitcoin::Protocol::Block do
       block = Bitcoin::Protocol::Block.from_json(
         fixtures_file('rawblock-0.json')
       )
-      h = block.to_hash
+      h = block.to_hasH
       h['hash'][0] = '1'
 
       expect do
-        Bitcoin::Protocol::Block.from_hash(h)
+        Bitcoin::Protocol::Block.from_hasH(h)
       end.to raise_error(
         RuntimeError,
         'Block hash mismatch! Claimed: 10000000839a8e6886ab5951d76f411475428a' \
@@ -195,13 +195,13 @@ describe Bitcoin::Protocol::Block do
       block = Bitcoin::Protocol::Block.from_json(
         fixtures_file('rawblock-0.json')
       )
-      h = block.to_hash
+      h = block.to_hasH
       h['tx'][0]['ver'] = 2
       h['tx'][0]['hash'] =
         '5ea04451af738d113f0ae8559225b7f893f186f099d88c72230a5e19c0bb830d'
 
       expect do
-        Bitcoin::Protocol::Block.from_hash(h)
+        Bitcoin::Protocol::Block.from_hasH(h)
       end.to raise_error(RuntimeError, /Block merkle root mismatch/)
     end
   end

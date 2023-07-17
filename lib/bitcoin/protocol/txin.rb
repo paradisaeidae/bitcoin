@@ -1,8 +1,10 @@
 module Bitcoin; module Protocol
  # https://github.com/lian/bitcoin-ruby/blob/master/lib/bitcoin/protocol/txin.rb # TxIn section of https://en.bitcoin.it/wiki/Protocol_documentation#tx
+
 class TxIn_rec < ::BinData::Record
  # https://developer.bitcoin.org/reference/transactions.html
 end
+
 class TxIn
  attr_reader :script_sig # script_sig input Script (signature)
  # signature hash and the address of the key that needs to sign it (used when dealing with unsigned or partly signed tx)
@@ -11,19 +13,26 @@ class TxIn
  DEFAULT_SEQUENCE = "\xff\xff\xff\xff".freeze; NULL_HASH = "\x00" * 32; COINBASE_INDEX = 0xffffffff
 
  def initialize(*args)
-  @prev_out_hash, @prev_out_index, @script_sig_length, @script_sig, @sequence = *args
-  @script_sig_length ||= 0
-  @script_sig        ||= ''
-  @sequence          ||= DEFAULT_SEQUENCE end
+  if args[0].class == Bitcoin::Protocol::TxOut then
+   @prev_out = args[0]
+   @prev_out_hash = args[1]
+   @prev_out_index = args[2]
+   @script_sig = @prev_out.pk_script
+   @script_sig_length = @prev_out.pk_script_length
+   @sequence          ||= DEFAULT_SEQUENCE 
+  else
+   @prev_out_hash, @prev_out_index, @script_sig_length, @script_sig, @sequence = *args
+   @script_sig_length ||= 0
+   @script_sig        ||= ''
+   @sequence          ||= DEFAULT_SEQUENCE end end
  
  # from_io, from_hash, from_hex_hash have previously been (self..) class methods.
  # Instantiating an object from within one of it's class methods dose not sit straight with moi.
- # 'Let me know in the comments'
-
-# def from_io(buf) # DEPRECATED, use parse_data_from_io directly on instance.
-#  txin = new
-#  txin.parse_data_from_io(buf)
-#  txin end
+ # Moved to module method. 'Let me know in the comments'
+ #def self.from_io(buf)
+ # txin = new
+ # txin.parse_data_from_io(buf)
+ # txin end
  
  def from_hash(input)
   # "vin"=>  [{"txid"=>"2a4bb8bc9c9e4dca72b657d32982cc49b2bd2e9d7fb84df7148bb5f11f5f9f15", "vout"=>0,
@@ -75,11 +84,15 @@ class TxIn
  def to_payload(script = @script_sig, sequence = @sequence)
   #  a  | String  | arbitrary binary string (null padded, count is width)
   #  V  | Integer | 32-bit unsigned, VAX (little-endian) byte order
-  [@prev_out_hash, @prev_out_index].pack('a32V') << Protocol.pack_var_int(script.bytesize) \
-   << script.force_encoding('ASCII-8BIT') << (sequence.dup.to_s.force_encoding('ASCII-8BIT') || DEFAULT_SEQUENCE.dup.force_encoding('ASCII-8BIT'))
+  payload =  [@prev_out_hash, @prev_out_index].pack('a32V')
+  payload << Protocol.pack_var_int(script.bytesize)
+  payload << script.force_encoding('ASCII-8BIT')
+  payload << (sequence.dup.to_s.force_encoding('ASCII-8BIT') || DEFAULT_SEQUENCE.dup.force_encoding('ASCII-8BIT'))
+  return payload
+  # [@prev_out_hash, @prev_out_index].pack('a32V') << Protocol.pack_var_int(script.bytesize) << script.force_encoding('ASCII-8BIT') << (sequence.dup.to_s.force_encoding('ASCII-8BIT') || DEFAULT_SEQUENCE.dup.force_encoding('ASCII-8BIT'))
   rescue => badThing
-   p badThing
-   p badThing.backtrace
+   puts badThing
+   puts badThing.backtrace
    debugger end
  
  def to_hash(_options = {}) # @prev_out_hash.nil? occurs when trans is coinbase.
@@ -101,7 +114,8 @@ class TxIn
   puts 'Previously aliased script= Due for DEPRECATION, move to script_sig=' # alias script= script_sig=
   end
 
- def add_signature_pubkey_script(sig, pubkey_hex) self.script = Bitcoin::Script.to_pubkey_script_sig(sig, [pubkey_hex].pack('H*')) end end end end
+ def add_signature_pubkey_script(sig, pubkey_hex) self.script_sig = Bitcoin::Script.to_pubkey_script_sig(sig, pubkey_hex) end end end end
+ # Previously expected double-byte decimal: [pubkey_hex].pack('H*')
 
 =begin
 
@@ -112,7 +126,7 @@ def to_hash_ORIG(_options = {})
  trans_h['sequence'] = @sequence.unpack('V')[0] unless @sequence == "\xff\xff\xff\xff"
  trans_h end
 
-def self.from_hash_ORIG(input)
+def self.from_hasH_ORIG(input)
  previous_hash         = input['previous_transaction_hash'] || input['prev_out']['hash']
  previous_output_index = input['output_index'] || input['prev_out']['n']
  txin = TxIn.new([previous_hash].pack('H*').reverse, previous_output_index)
