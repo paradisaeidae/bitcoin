@@ -114,7 +114,7 @@ describe Bitcoin::Protocol::Tx do
                        'Tx hash mismatch! Claimed: ' \
                        '6e9dd16625b62cfcd4bf02edb89ca1f5a8c30c4b1601507090fb2' \
                        '8e59f2d02b4, Actual: 395cd28c334ac84ed125ec5ccd5bc29ea' \
-                       'dcc96b79c337d0a87a19df64ea3b548') end   # witness tx(P2WPKH) deleted 
+                       'dcc96b79c337d0a87a19df64ea3b548') end   # witness tx(P2WPKH) deleted
 
   it '.binary_from_hash' do
     orig_tx = Bitcoin::Protocol::Tx.new(payloads[0])
@@ -495,7 +495,7 @@ describe Bitcoin::Protocol::Tx do
         tx.verify_input_signature(idx, prev_txs[i.previous_output])
       ).to be true end end end
     # P2SH-P2WPKH    # P2SH-P2WSH transactions deleted.
- 
+
   describe '#signature_hash_for_input' do
     it 'sighash_all' do
       prev_tx = Bitcoin::Protocol::Tx.new(
@@ -831,13 +831,13 @@ describe Bitcoin::Protocol::Tx do
     def parse_flags(flags_str)
      flags_str.split(',').each_with_object({}) do |flag_str, opts|
       case flag_str.to_sym
-      when :STRICTENC then opts[:verify_strictenc] = true
-      when :DERSIG then opts[:verify_dersig] = true
-      when :LOW_S then opts[:verify_low_s] = true
-      when :SIGPUSHONLY then opts[:verify_sigpushonly] = true
-      when :MINIMALDATA then opts[:verify_minimaldata] = true
-      when :CLEANSTACK then opts[:verify_cleanstack] = true
-      when :SIGHASH_FORKID then opts[:fork_id] = 0 end end end
+      when :STRICTENC      then opts[:verify_strictenc] = true
+      when :DERSIG         then opts[:verify_dersig] = true
+      when :LOW_S          then opts[:verify_low_s] = true
+      when :SIGPUSHONLY    then opts[:verify_sigpushonly] = true
+      when :MINIMALDATA    then opts[:verify_minimaldata] = true
+      when :CLEANSTACK     then opts[:verify_cleanstack] = true end end end
+   #BSV   when :SIGHASH_FORKID then opts[:fork_id] = 0
     # rubocop:enable Metrics/CyclomaticComplexity
 
     it 'script JSON tests' do
@@ -873,7 +873,7 @@ describe Bitcoin::Protocol::Tx do
         # A lot of the test cases are failing, so for now we only test the
         # SIGHASH_FORKID ones.
         # TODO: Get this spec passing without this line.
-        next unless opts[:fork_id]
+        # next unless opts[:fork_id]
 
         crediting_tx = Bitcoin::Protocol::Tx.new
         crediting_tx.add_in(Bitcoin::Protocol::TxIn.new)

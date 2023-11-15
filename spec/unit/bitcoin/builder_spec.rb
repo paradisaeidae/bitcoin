@@ -358,7 +358,7 @@ describe Bitcoin::Builder do
     expect(script.type).to eq(:hash160)
     expect(script.get_address).to eq(keys[1].addr)
     expect(
-      tx.verify_input_signature(0, block.tx[0], Time.now.to_i, fork_id: 0)
+      tx.verify_input_signature(0, block.tx[0], Time.now.to_i)
     ).to be true
     expect(Bitcoin::Script.new(tx.out[0].pk_script).to_string)
       .to eq("OP_DUP OP_HASH160 #{keys[1].hash160} OP_EQUALVERIFY OP_CHECKSIG") end end

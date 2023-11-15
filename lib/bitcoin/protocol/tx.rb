@@ -80,7 +80,7 @@ def to_payload # was to_old_payload due to witness 'protection'! https://github.
   # https://github.com/bitcoin-sv/bitcoin-sv/blob/c2e8c8acd8ae0c94c70b59f55169841ad195bb99/src/script.cpp#L1058
   # https://wiki.bitcoinsv.io/index.php/SIGHASH_flags
   # NOTE: Currently all BitcoinSV transactions require an additional SIGHASH flag called SIGHASH_FORKID which is 0x40
-  # A SIGHASH flag is used to indicate which part of the transaction is signed by the ECDSA signature. 
+  # A SIGHASH flag is used to indicate which part of the transaction is signed by the ECDSA signature.
   # https://github.com/Bitcoin-ABC/bitcoin-abc/blob/master/doc/abc/replay-protected-sighash.md
  # generate a signature hash for input  +input_idx+.
  # either pass the +outpoint_tx+ or the +script_pubkey+ directly.
@@ -126,23 +126,24 @@ def to_payload # was to_old_payload due to witness 'protection'! https://github.
 
 # verify input signature +in_idx+ against the corresponding output in +outpoint_tx+ outpoint.
 # This arg can also be a Script or TxOut.
-# options are: verify_sigpushonly, verify_minimaldata, verify_cleanstack, verify_dersig, verify_low_s, verify_strictenc, fork_id
+# options are: verify_sigpushonly, verify_minimaldata, verify_cleanstack, verify_dersig, verify_low_s, verify_strictenc
 def verify_input_signature(in_idx, op_data, blocktimestamp = Time.now.to_i, opts = {})
  # if @enable_bitcoinconsensus then return bitcoinconsensus_verify_script(in_idx, op_data, blocktimestamp, opts) end
  # If FORKID is enabled, we also ensure strict encoding.
- opts[:verify_strictenc] ||= !opts[:fork_id].nil?
+ opts[:verify_strictenc] = true
  op_idx     = @in[in_idx].prev_out_index
  op_scr_sig = @in[in_idx].script_sig
  amount = amount_from_outpoint_data(op_data, op_idx)
  script_pubkey = script_pubkey_from_outpoint_data(op_data, op_idx)
- raise 'this must be called with a previous trans or trans output if SIGHASH_FORKID is enabled' if opts[:fork_id] && amount.nil?
+ raise 'nil from amount_from_outpoint_data' if amount.nil?
  @scripts[in_idx] = Bitcoin::Script.new(op_scr_sig, script_pubkey)
  return false if opts[:verify_sigpushonly] && !@scripts[in_idx].is_push_only?(op_scr_sig)
  return false if opts[:verify_minimaldata] && !@scripts[in_idx].pushes_are_canonical?
- sig_valid = @scripts[in_idx].run( blocktimestamp, opts ) do | pubkey, sig, hash_type, subscript | # This block is used by script call(pubkey, sig, hash_type, subscript) in Tx
-  hash = signature_hash_for_input(in_idx, subscript, hash_type, amount, opts[:fork_id])
+ sig_valid = @scripts[in_idx].run( blocktimestamp, opts ) do | pubkey, sig, hash_type, subscript |
+  # This block is used by script call(pubkey, sig, hash_type, subscript) in Tx
+  hash = signature_hash_for_input(in_idx, subscript, hash_type, amount)
   Bitcoin.verify_signature(pubkey, sig, hash) end
- return false if opts[:verify_cleanstack] && !@scripts[in_idx].stack.empty? # BIP62 rule #6
+ return false if opts[:verify_cleanstack] && !@scripts[in_idx].stack.empty?
  sig_valid
  rescue => badThing
   puts badThing.inspect
