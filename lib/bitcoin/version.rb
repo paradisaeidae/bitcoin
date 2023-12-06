@@ -1,2 +1,2 @@
 module Bitcoin
- VERSION = "0.0.20" end
+ VERSION = "0.0.30" end

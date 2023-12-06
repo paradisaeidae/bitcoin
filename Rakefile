@@ -1,4 +1,4 @@
-require 'bundler/gem_tasks'
+#require 'bundler/gem_tasks'
 require 'rspec/core/rake_task'
 
 # libsecp256k1 repository URL
@@ -7,16 +7,15 @@ LIBSECP256K1_REPO = 'https://github.com/bitcoin-core/secp256k1/'.freeze
 LIBSECP256K1_PATH = 'secp256k1'.freeze
 
 RUBY = 'ruby' unless defined?(RUBY)
-
 # Attempts to configure the path to libsecp256k1.
 #
 # @return [Bool] true if the library was found and configured, false otherwise.
 def configure_libsecp256k1
  return true if ENV["SECP256K1_LIB_PATH"]
- 
+
  if File.exist?('secp256k1.so')
-   ENV['SECP256K1_LIB_PATH'] = File.join(Dir.pwd, 'secp256k1.so')
-   return true end
+  ENV['SECP256K1_LIB_PATH'] = File.join(Dir.pwd, 'secp256k1.so')
+  return true end
  false end
 
 task :default => :rspec
@@ -30,9 +29,9 @@ desc 'Compiles the libsecp256k1 library'
 task :build_libsecp256k1, [:force] do |_, args|
  # Commit hash for libsecp256k1 from May 31, 2018.
  COMMIT_HASH = '1e6f1f5ad5e7f1e3ef79313ec02023902bf8175c'.freeze
- 
+
  force = args[:force]
- 
+
  if Dir.exists?(LIBSECP256K1_PATH) && !force
   puts "ERROR: Folder #{LIBSECP256K1_PATH} already exists, run with " \
        "[force:true] to force cloning and building anyways."
@@ -70,6 +69,6 @@ task :coverage do
  rescue LoadError
   puts "Simplecov not found. Run `gem install simplecov` to install it."
   exit end
- 
+
  Rake::Task['rspec'].invoke
  system('open coverage/index.html') if RUBY_PLATFORM.include? 'darwin' end

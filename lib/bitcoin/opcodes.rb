@@ -15,11 +15,11 @@ OP_MOD  	151 	0x97 	a b 	out 	return the remainder after a is divided by b
 OP_NUM2BIN 	128 	0x80 	a b 	out 	convert numeric value a into byte sequence of length b
 OP_BIN2NUM 	129 	0x81 	x 	out 	convert byte sequence x into a numeric value
 
-Bitcoin ABC, the full node implementation developed by Amaury Séchet and currently used by most miners, 
-has announced plans to activate, among other changes, two new opcodes during the protocol’s November hard fork 
+Bitcoin ABC, the full node implementation developed by Amaury Séchet and currently used by most miners,
+has announced plans to activate, among other changes, two new opcodes during the protocol’s November hard fork
 — OP_CHECKDATASIG and OP_CHECKDATASIGVERIFY — as well as implement canonical transaction ordering.
 These proposals have been met with strong resistance by Wright and Ayre, who have argued that,
- among other things, these opcodes could lead to “unlicensed gambling” since they can be used to 
+ among other things, these opcodes could lead to “unlicensed gambling” since they can be used to
 implement “oracle” services such as those that make decentralized prediction markets possible.
  Ayre, incidentally, made his fortune through an online gambling empire, though it is Wright in particular
  who has used this as an argument against these opcodes.
@@ -191,9 +191,9 @@ def self.decode_OP_N(opcode)
  else nil end end
 
 =begin
-Additionally, the first release of Bitcoin SV will restore four “Satoshi opcodes” — 
-scripting operations that had originally been included in Bitcoin but were disabled in later software updates. 
-These opcodes are: OP_MUL, OP_LSHIFT, OP_RSHIFT, and OP_INVERT. 
+Additionally, the first release of Bitcoin SV will restore four “Satoshi opcodes” —
+scripting operations that had originally been included in Bitcoin but were disabled in later software updates.
+These opcodes are: OP_MUL, OP_LSHIFT, OP_RSHIFT, and OP_INVERT.
 Additionally, Bitcoin SV will remove the limit of 201 opcodes per individual script.
 =end
 
@@ -502,6 +502,6 @@ def op_checkmultisigverify(check_callback, opts={})
  op_checkmultisig(check_callback, opts)
  op_verify end
 
-OPCODES_METHOD = Hash[*instance_methods.grep(/^op_/).map{ | m | [ ( OPCODES.find{|k,v| v == m.to_s.upcase }.first rescue nil), m ] }.flatten]
+OPCODES_METHOD = Hash[*instance_methods.grep(/^op_/).map{ | m | [ ( OPCODES.find{ | k, v | v == m.to_s.upcase }.first rescue nil), m ] }.flatten]
 OPCODES_METHOD[0]  = :op_0
 OPCODES_METHOD[81] = :op_1 end

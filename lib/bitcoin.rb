@@ -1,23 +1,37 @@
 # Bitcoin Utils and Network Protocol in Ruby.
+
+['bindata', 'eventmachine', 'resolv', 'json', 'digest/sha2', 'digest/rmd160', 'base64', 'ffi', 'openssl', 'securerandom', 'ecdsa',\
+ 'money-tree','base58-alphabets', 'stringio', 'socket'].each {| ment | require ment}
+
+# require relative will find these beneath the gem's lib/bitcoin dir.
+['wallets/electrum', 'builder', 'ffi/openssl-3.0', 'ffi/secp256k1', 'opcodes'].each {| ment | require_relative './bitcoin/' + ment}
+# ffi/secp256k1 loads the secp256k1 shared object.
+# rbnacl is not required https://github.com/RubyCrypto/rbnacl
+
+# Explicitly load these.
+mods =  [:Connection,  :Protocol,  :P,         :Script,  :VERSION,  :Key,  :ExtKey,   :ExtPubkey, :Builder,  :BloomFilter,   :ContractHash, ]
+codes = ['connection', 'protocol', 'protocol', 'script', 'version', 'key', 'ext_key', 'ext_key',  'builder', 'bloom_filter', 'contracthash']
+mods.each_with_index { | mod, code | require_relative 'bitcoin/' + codes[code] }
+mods =  [:InPoint,  :OutPoint,  :Tx,  :Block,  :Addr,  :Reject,  :Version,  :AuxPow,  :PartialMerkleTree, :Handler, :Parser]
+codes = ['inpoint', 'outpoint', 'tx', 'block', 'address', 'reject', 'version', 'aux_pow', 'partial_merkle_tree', 'handler', 'parser']
+mods.each_with_index { | mod, code | require_relative 'bitcoin/protocol/' + codes[code] }
+
+# This is a pre-emptive monumental load of requirements. Your machine is fast enough. In common use it will be in a process.
+# This also means the gem is not needing to be built on each modification iteration. Can be run from local git directory.
+# connection class is retained even though unlikely to be used as a real node.
+
 # Previously a check would adjust Integer class according to Ruby version.
 # Ruby 3 unifies Fixnum and Bignum to Integer.
 # https://github.com/bitcoin-sv/bitcoin-sv/blob/master/src/script/script.cpp
-['digest/sha2', 'digest/rmd160', 'ffi', 'openssl', 'securerandom', 'debug', 'ecdsa', 'money-tree', 'bindata', 'base58-alphabets','rbnacl'].each {| ment | require ment}
-require_relative './bitcoin/wallets/electrum'  #autoload :Electrum, 'bitcoin/wallets/electrum'
-require_relative './bitcoin/builder'
-require_relative './bitcoin/ffi/openssl-3.0'
-require_relative './bitcoin/ffi/secp256k1' #'rbsecp256k1' contains schnoor.
-require_relative "./bitcoin/ffi/bitcoinconsensus.rb"
-#autoload :OpenSSL_EC,       "bitcoin/ffi/openssl"
-#autoload :Secp256k1,        "bitcoin/ffi/secp256k1"
-#autoload :BitcoinConsensus, "bitcoin/ffi/bitcoinconsensus"
+# bitcoinconsensus" No longer 'side' published.
+# avoid 'rbsecp256k1', contains schnoor.
+
 module Bitcoin
-mods =  [:Connection, :Protocol,    :P,        :Script,  :VERSION,  :Key,  :ExtKey,   :ExtPubkey, :Builder, :BloomFilter,    :ContractHash, ]
-codes = ['connection', 'protocol', 'protocol', 'script', 'version', 'key', 'ext_key', 'ext_key',  'builder', 'bloom_filter', 'contracthash']
-mods.each_with_index { | mod, code | autoload mod, 'bitcoin/' + codes[code] }
+
 BSV = Struct.new(:name, :magic_head, :message_magic, :address_version, :p2sh_version, :privkey_version,\
-      :extended_privkey_version, :extended_pubkey_version).new(
-      :bsv, 'e3e1f3e8', 'Bitcoin SV', '00', '05', '80', '0488ade4', '0488b21e', 0x0b110907 )
+      :extended_privkey_version, :extended_pubkey_version)
+            .new(:bsv, 'e3e1f3e8', 'Bitcoin SV',     '00',             '05',          '80',
+      '0488ade4',                '0488b21e' ) #, 0x0b110907 )
 
 module Util
  def address_version() Bitcoin.network[:address_version] end
@@ -187,17 +201,19 @@ module Util
    target = bitcoin_mrkl( a, b ) end
   target end
 
- def sign_data(key, data)
-  sig = nil
+ def sign_data(priv_key, data)
+  signed = nil
   loop {
-   sig = key.dsa_sign_asn1(data)
-   #sig = ::Bitcoin::Secp256k1.sign([data].pack("H*"), key.private_key.to_s) # sig = key.dsa_sign_asn1(data)
-   if Script.is_low_der_signature?(sig) then sig
-    else sig end #::Bitcoin::Secp256k1.normalize(sig) end Normaization is broken,
-   buf = sig + [Script::SIGHASH_TYPE[:all]].pack("C") # is_der_signature expects sig + sighash_type format
+   #signed = key.dsa_sign_asn1(data) # This signs with OpenSSL
+   #signed = ::Bitcoin::Secp256k1.sign([data].pack("H*"), key.private_key.to_s) # This signs with ffi Secp256k1 library.
+   signed = ::Bitcoin::Secp256k1.sign(data, priv_key.to_s) #key.private_key.to_s) # This signs with ffi Secp256k1 library.
+   if !Script.is_low_der_signature?(signed) then puts "Warning: sig is high der" end # The issue with a "low S value" arises from the way Bitcoin verifies signatures. Bitcoin's protocol enforces a rule called "low S value" to mitigate a potential attack vector known as "malleability." Malleability refers to the ability of an attacker to modify a transaction's signature in such a way that the transaction is still valid but has a different transaction ID (hash).
+   buf = signed + [Script::SIGHASH_TYPE[:all]].pack("C") # is_der_signature expects sig + sighash_type format
    if Script.is_der_signature?(buf) then break
-   else p ["Bitcoin#sign_data: invalid der signature generated, trying again.", data.unpack("H*")[0], sig.unpack("H*")[0]] end }
-  return sig end
+   else p ["Bitcoin#sign_data: invalid der signature generated, trying again.", data.unpack("H*")[0], signed.unpack("H*")[0]] end }
+  return signed
+ rescue => badThing
+  debugger end
 
  def verify_signature(pubkey, signature, hash) # Verifies signature matches public key and data.
   return ::Bitcoin::Secp256k1.verify(hash, signature, pubkey) # Use the ffi! Which is traceable. rbsecp256k1 gem has schnorr infection.
@@ -206,8 +222,7 @@ module Util
 
  def ossl_pub_key(hex_66) # From public hex66
   sequence = OpenSSL::ASN1::Sequence([ OpenSSL::ASN1::Integer(1), OpenSSL::ASN1::OctetString(OpenSSL::BN.new(hex_66, 16).to_s(2)), OpenSSL::ASN1::ObjectId("secp256k1", 0, :EXPLICIT)])
-  pub = OpenSSL::PKey::EC.new(sequence.to_der)
-  end
+  pub = OpenSSL::PKey::EC.new(sequence.to_der) end
 
 =begin
  def verify_signature_prev(data, signature, public_key) #

@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*- 
+# -*- coding: utf-8 -*-
 # https://github.com/dougal/base58 https://github.com/GemHQ/money-tree/blob/2d0ba66441ec035e364482690bfe395ca7bf64b8/lib/money-tree/key.rb#L60
 # https://ozanyurtseven.wordpress.com/2015/04/29/hierarchical-deterministic-wallets-bip0032bip0044-in-ruby/
 module Electrum

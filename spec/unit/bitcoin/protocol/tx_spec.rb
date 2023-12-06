@@ -406,7 +406,7 @@ describe Bitcoin::Protocol::Tx do
       .to eq('a6ce7081addade7676cd2af75c4129eba6bf5e179a19c40c7d4cf6a5fe595954')
     expect(tx.verify_input_signature(0, outpoint_tx)).to be true
 
-    # drop OP_CODESEPARATOR in subscript for signature_hash_for_input
+    # drop OP_CODESEPARATOR in subscript for signature_hash_for_inputs
     tx = Bitcoin::Protocol::Tx.from_json(
       fixtures_file(
         'tx-46224764c7870f95b58f155bce1e38d4da8e99d42dbb632d0dd7c07e092ee5aa.json' ) )
@@ -419,7 +419,7 @@ describe Bitcoin::Protocol::Tx do
       .to eq('bc7fd132fcf817918334822ee6d9bd95c889099c96e07ca2c1eb2cc70db63224')
     expect(tx.verify_input_signature(0, outpoint_tx)).to be true
 
-    # drop OP_CODESEPARATOR in subscript for signature_hash_for_input
+    # drop OP_CODESEPARATOR in subscript for signature_hash_for_inputs
     tx = Bitcoin::Protocol::Tx.from_json(
       fixtures_file(
         'tx-aab7ef280abbb9cc6fbaf524d2645c3daf4fcca2b3f53370e618d9cedf65f1f8.json' ) )
@@ -432,7 +432,7 @@ describe Bitcoin::Protocol::Tx do
       .to eq('326882a7f22b5191f1a0cc9962ca4b878cd969cf3b3a70887aece4d801a0ba5e')
     expect(tx.verify_input_signature(0, outpoint_tx)).to be true
 
-    # drop multisig OP_CODESEPARATOR in subscript for signature_hash_for_input
+    # drop multisig OP_CODESEPARATOR in subscript for signature_hash_for_inputs
     tx = Bitcoin::Protocol::Tx.from_json(
       fixtures_file(
         'tx-6327783a064d4e350c454ad5cd90201aedf65b1fc524e73709c52f0163739190.json' ) )
@@ -445,7 +445,7 @@ describe Bitcoin::Protocol::Tx do
       .to eq('a955032f4d6b0c9bfe8cad8f00a8933790b9c1dc28c82e0f48e75b35da0e4944')
     expect(tx.verify_input_signature(0, outpoint_tx)).to be true
 
-    # drop multisig OP_CODESEPARATOR in subscript for signature_hash_for_input
+    # drop multisig OP_CODESEPARATOR in subscript for signature_hash_for_inputs
     # when used in ScriptSig
     tx = Bitcoin::Protocol::Tx.from_json(
       fixtures_file(
@@ -496,7 +496,7 @@ describe Bitcoin::Protocol::Tx do
       ).to be true end end end
     # P2SH-P2WPKH    # P2SH-P2WSH transactions deleted.
 
-  describe '#signature_hash_for_input' do
+  describe '#signature_hash_for_inputs' do
     it 'sighash_all' do
       prev_tx = Bitcoin::Protocol::Tx.new(
        fixtures_file('rawtx-2f4a2717ec8c9f077a87dde6cbe0274d5238793a3f3f492b63c744837285e58a.bin' ) )
@@ -509,7 +509,7 @@ describe Bitcoin::Protocol::Tx do
       new_tx = Bitcoin::Protocol::Tx.new(nil)
       new_tx.add_in( Bitcoin::Protocol::TxIn.new(prev_tx.binary_hash, 0, 0))
       new_tx.add_out(Bitcoin::Protocol::TxOut.value_to_address( 1_000_000,  '1BVJWLTCtjA8wRivvrCiwjNdL6KjdMUCTZ' ) )
-      signature_hash = new_tx.signature_hash_for_input(0, prev_tx)
+      signature_hash = new_tx.signature_hash_for_inputs(0, prev_tx)
       sig = Bitcoin.sign_data(key, signature_hash)
       new_tx.in[0].script_sig = Bitcoin::Script.to_pubkey_script_sig( sig, [pubkey].pack('H*') )
 
@@ -529,7 +529,7 @@ describe Bitcoin::Protocol::Tx do
       new_tx.add_in(Bitcoin::Protocol::TxIn.new(prev_tx.binary_hash, 0, 0))
       pk_script = Bitcoin::Script.to_address_script('1FEYAh1x5jeKQMPPuv3bKnKvbgVAqXvqjW' )
       new_tx.add_out( Bitcoin::Protocol::TxOut.new(1_000_000, pk_script) )
-      signature_hash = new_tx.signature_hash_for_input(0, prev_tx)
+      signature_hash = new_tx.signature_hash_for_inputs(0, prev_tx)
       sig = Bitcoin.sign_data(key, signature_hash)
       new_tx.in[0].script_sig = Bitcoin::Script.to_pubkey_script_sig( sig, [pubkey].pack('H*') )
 
@@ -549,7 +549,7 @@ describe Bitcoin::Protocol::Tx do
       new_tx.add_in(  Bitcoin::Protocol::TxIn.new(prev_tx.binary_hash, 0, 0) )
       new_tx.add_out( Bitcoin::Protocol::TxOut.value_to_address(
           1_000_000, '14yz7fob6Q16hZu4nXfmv1kRJpSYaFtet5' ) )
-      signature_hash = new_tx.signature_hash_for_input(0, prev_tx)
+      signature_hash = new_tx.signature_hash_for_inputs(0, prev_tx)
       sig = Bitcoin.sign_data(key, signature_hash)
       new_tx.in[0].script_sig = Bitcoin::Script.to_pubkey_script_sig(
         sig, [pubkey].pack('H*') )
@@ -570,7 +570,7 @@ describe Bitcoin::Protocol::Tx do
         hash_type = test_case[3]
         amount = 0
         expected_sighash = test_case[4].htb_reverse
-        actual_sighash = transaction.signature_hash_for_input( input_index, subscript, hash_type, amount, 0 )
+        actual_sighash = transaction.signature_hash_for_inputs( input_index, subscript, hash_type, amount, 0 )
         expect(actual_sighash).to eq(expected_sighash) end end
 
 

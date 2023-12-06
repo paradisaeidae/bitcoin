@@ -1,13 +1,10 @@
-require_relative '../bitcoin'
-require_relative 'opcodes'
 #class ScriptError < StandardError
 #  def initialize(msg="Script issue", exception_type="")
 #    @exception_type = exception_type
 #    super(msg) end end
 class Bitcoin::Script
 include Opcodes
- # create a new script. +bytes+ is typically input_script + output_script
- def initialize(input_script, previous_output_script=nil)
+ def initialize(input_script, previous_output_script=nil) # create a new script. +bytes+ is typically input_script + output_script
   @raw_byte_sizes = [input_script.bytesize, previous_output_script ? previous_output_script.bytesize : 0]
   @input_script, @previous_output_script = input_script, previous_output_script
   @parse_invalid = nil
@@ -203,10 +200,10 @@ include Opcodes
  # run the script. +check_callback+ is called for OP_CHECKSIG operations
  def run(block_timestamp=Time.now.to_i, opts={}, &check_callback)
   return false if @parse_invalid
-  @script_invalid = true if @raw_byte_sizes.any?{ | size | size > 10_000 }
+  @script_invalid = true if @raw_byte_sizes.any?{ | size | size > 500_000 } # https://github.com/bitcoin-sv/bitcoin-sv/issues/201
   @last_codeseparator_index = 0
   @debug = []
-  @chunks.each.with_index{| chunk, idx |
+  @chunks.each.with_index{ | chunk, idx |
    break if invalid?
    @chunk_last_index = idx
    @debug << @stack.map{ |i| i.unpack("H*") rescue i }
@@ -315,11 +312,11 @@ include Opcodes
 
  # get type of this tx
  def type
-  if    is_hash160?;              :hash160
-  elsif is_pubkey?;               :pubkey
-  elsif is_multisig?;             :multisig
-  elsif is_op_return?;            :op_return
-  else;                           :unknown end end
+  if    is_hash160?;   :hash160
+  elsif is_pubkey?;    :pubkey
+  elsif is_multisig?;  :multisig
+  elsif is_op_return?; :op_return
+  else;                :unknown end end
 
  # get the public key for this pubkey script
  def get_pubkey
@@ -355,9 +352,9 @@ include Opcodes
 
  # get all addresses this script corresponds to (if possible)
  def get_addresses
-  return [get_pubkey_address]    if is_pubkey?
-  return [get_hash160_address]   if is_hash160?
-  return get_multisig_addresses  if is_multisig?
+  return [get_pubkey_address]   if is_pubkey?
+  return [get_hash160_address]  if is_hash160?
+  return get_multisig_addresses if is_multisig?
   [] end
 
  # get single address, or first for multisig script
@@ -522,7 +519,6 @@ include Opcodes
   return invalid if @stack.size < 2
   popped = @stack.pop
   pubkey = cast_to_string(popped)
-  puts "op_checksig: pubkey: #{pubkey.inspect}"
   return (@stack << 0) unless Bitcoin::Script.check_pubkey_encoding?(pubkey, opts)
   drop_sigs = [ cast_to_string(@stack[-1]) ]
   signature = cast_to_string(@stack.pop)
@@ -531,7 +527,7 @@ include Opcodes
   sig, _ = parse_sig(signature)
   subscript = @inner_script_code ? Bitcoin::Script.new(@inner_script_code).to_binary_without_signatures(drop_sigs) : to_binary_without_signatures(drop_sigs)
 
-  #sig, hash_type = parse_sig(signature)
+  sig, hash_type = parse_sig(signature)
   #subscript = sighash_subscript(drop_sigs, opts)
   if check_callback == nil then @stack << 1 # for tests
   else @stack << ((check_callback.call(pubkey, sig, hash_type, subscript) == true) ? 1 : 0) end end # real signature check callback from Tx
@@ -557,8 +553,7 @@ include Opcodes
    return false if pubkey.bytesize != 65 # "Non-canonical public key: invalid length for uncompressed key"
   when "\x02", "\x03"
    return false if pubkey.bytesize != 33 # "Non-canonical public key: invalid length for compressed key"
-  else
-   return false end # "Non-canonical public key: compressed nor uncompressed"
+  else return false end # "Non-canonical public key: compressed nor uncompressed"
   true end
 
  # CheckSignatureEncoding() https://github.com/bitcoin-sv/bitcoin-sv/blob/4d3444909a5a98f129d3d2991bf8f0f7f15d3969/src/script/interpreter.cpp#L262
@@ -566,7 +561,7 @@ include Opcodes
   return true  if sig.bytesize == 0
   return false if (opts[:verify_dersig] || opts[:verify_low_s] || opts[:verify_strictenc]) and !is_der_signature?(sig)
   return false if opts[:verify_low_s] && !is_low_der_signature?(sig)
-  if opts[:verify_strictenc] then return false unless is_defined_hashtype_signature?(sig) end # Removed check for fork.
+  #if opts[:verify_strictenc] then puts "Not strictly enc." unless is_defined_hashtype_signature?(sig) end # Removed check for fork. verify_strictenc??
   true end
 
  # IsValidSignatureEncoding() from https://github.com/bitcoin-sv/bitcoin-sv/blob/4d3444909a5a98f129d3d2991bf8f0f7f15d3969/src/script/interpreter.cpp#L163
@@ -619,12 +614,26 @@ include Opcodes
   s_val = s.slice(6 + length_r, length_s)
   low_s_signature = Bitcoin::Script::Signature.new(r_value, s_value).to_der_canonical end
 
- def self.is_defined_hashtype_signature?(sig) # Check for bounding!!!
+ def self.is_defined_hashtype_signature?(sig) # Check for bounding!!! https://wiki.bitcoinsv.io/index.php/SIGHASH_flags
   return false if sig.empty?
   s = sig.unpack("C*")
   hash_type = s[-1] & (~(SIGHASH_TYPE[:anyonecanpay] | SIGHASH_TYPE[:forkid_DEP]))
   return false if hash_type < SIGHASH_TYPE[:all] || hash_type > SIGHASH_TYPE[:single_any] # Non-canonical signature: unknown hashtype byte
   true end
+
+=begin
+SIGHASH_TYPE[:anyonecanpay] and SIGHASH_TYPE[:forkid_DEP] are constants representing specific values related
+ to Bitcoin's transaction signing and hashing protocol.
+| is the bitwise OR operator. It combines the binary representation of the two values, setting the bits that
+ are set in either or both.
+~ is the bitwise NOT operator. It flips the bits of the binary representation, changing each 1 to 0 and each 0 to 1.
+& is the bitwise AND operator. It performs a bitwise AND operation between the binary representation of s[-1] and
+ the bitwise NOT of the combined SIGHASH_TYPE values.
+
+In summary, this line of code is manipulating the last element (s[-1]) of some array or string (s) using bitwise operations.
+ It seems to be related to Bitcoin transaction signing, specifically excluding the SIGHASH_TYPE[:anyonecanpay] and
+ SIGHASH_TYPE[:forkid_DEP] flags from the last element's binary representation.
+=end
 
  private
  def parse_sig(sig)

@@ -8,7 +8,7 @@
 dlname='libsecp256k1.so.2'
 
 # Names of this library.
-library_names='libsecp256k1.so.2.0.1 libsecp256k1.so.2 libsecp256k1.so'
+library_names='libsecp256k1.so.2.1.0 libsecp256k1.so.2 libsecp256k1.so'
 
 # The name of the static archive.
 old_library='libsecp256k1.a'
@@ -23,9 +23,9 @@ dependency_libs=''
 weak_library_names=''
 
 # Version information for libsecp256k1.
-current=2
-age=0
-revision=1
+current=3
+age=1
+revision=0
 
 # Is this an already installed library?
 installed=yes
@@ -38,4 +38,4 @@ dlopen=''
 dlpreopen=''
 
 # Directory that this library needs to be installed in:
-libdir='/usr/local/lib'
+libdir='/MakeStore/MakeFromHere/GITs/bitcoin-SV/bitcoin/libsecp256k1/lib'

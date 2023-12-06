@@ -26,7 +26,7 @@ new_tx.add_out Bitcoin::Protocol::TxOut.value_to_address(value, "msVfS4Wp754gZYj
 # if all in and outputs are defined, start signing inputs.
 #key_pair = Bitcoin.open_key("9b2f08ebc186d435ffc1d10f3627f05ce4b983b72c76b0aee4fcce99e57b0342") # <- privkey
 
-sig = Bitcoin.sign_data(key_pair, new_tx.signature_hash_for_input(0, prev_tx.outputs[prev_tx_output_index].pk_script))
+sig = Bitcoin.sign_data(key_pair, new_tx.signature_hash_for_inputs(0, prev_tx.outputs[prev_tx_output_index].pk_script))
 new_tx.inputs[0].script_sig = Bitcoin::Script.to_pubkey_script_sig(sig, [key_pair.public_key_hex].pack("H*"))
 #new_tx.in[0].add_signature_pubkey_script(sig, key.public_key_hex)
 

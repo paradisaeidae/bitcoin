@@ -4,6 +4,7 @@
 This is a ruby library for interacting with the bitcoin protocol/network.
 As per the adjustments to return to:
 https://github.com/bitcoin-sv-specs/protocol/blob/master/updates/genesis-spec.md
+https://www.bsvblockchain.org/releases/changes-for-the-genesis-upgrade
 
 Some of the main features are:
 
@@ -12,6 +13,11 @@ Some of the main features are:
 * Bitcoin::Protocol can parse/create all protocol messages
 * Bitcoin::Script implementation, create/run scripts and verify signatures
 * Bitcoin::Builder provides a high-level API for creating transactions (and blocks)
+
+Some adjustments:
+* Script limit increased to 500k
+* Removed references to fork_id
+* Removed all P2SH code, references and tests.
 
 == Compatible with...
 
@@ -101,13 +107,13 @@ If you want to control the Bitcoin::Script yourself, you can do so
  script = Bitcoin::Script.new(txin.script_sig + txout.pk_script)
 
  result = script.run do |pubkey, sig, hash_type|
-  hash = tx1.signature_hash_for_input(0, nil, txout.pk_script)
+  hash = tx1.signature_hash_for_inputs(0, nil, txout.pk_script)
   Bitcoin.verify_signature(hash, sig, pubkey.unpack("H*")[0]) end
  result #=> true
 
 === Create Transactions
 
-You need to know the previous output you want to spend (tx hash and output index),
+You need to know the onchained (previous) outpoint you want to spend (tx hash and output index),
 as well as the private key for the address required to sign for it.
 
  # use testnet so you don't accidentally blow your whole money!
@@ -116,7 +122,7 @@ as well as the private key for the address required to sign for it.
  # make the DSL methods available in your scope
  include Bitcoin::Builder
  
- # the previous transaction that has an output to your address
+ # the onchained transaction that has an output to your address
  prev_hash = "6c44b284c20fa22bd69c57a9dbff91fb71deddc8c54fb2f5aa41fc78c96c1ad1"
  
  # the number of the output you want to use
@@ -125,7 +131,7 @@ as well as the private key for the address required to sign for it.
  # fetch the tx from whereever you like and parse it
  prev_tx = Bitcoin::P::Tx.from_json(open("http://TBA/tx/#{prev_hash}.json"))
  
- # the key needed to sign an input that spends the previous output
+ # the key needed to sign an inpoint that spends the onchained outpoint
  key = Bitcoin::Key.from_base58("92ZRu28m2GHSKaaF2W7RswJ2iJYpTzVhBaN6ZLs7TENCs4b7ML8")
  
  # create a new transaction (and sign the inputs)
@@ -149,7 +155,7 @@ as well as the private key for the address required to sign for it.
     o.value 49000000 # 0.49 BSV, leave 0.01 BSV as fee
     o.script {|s| s.recipient key.addr } end end
  
- # examine your transaction. you can relay it through http://TBA
+ # examine your transaction. you can relay it through https://TBA
  # that will also give you a hint on the error if something goes wrong
  puts new_tx.to_json
 

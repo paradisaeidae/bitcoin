@@ -1,8 +1,3 @@
-require 'socket'
-require 'eventmachine'
-require 'bitcoin'
-require 'resolv'
-
 module Bitcoin # Handle messages received from node
 module ConnectionHandler
 def on_inv_transaction(hash)
@@ -91,6 +86,6 @@ def self.connect_random_from_dns(connections)
 if $PROGRAM_NAME == __FILE__
  EM.run do
   connections = []
-  Bitcoin::Connection.connect('elsdk', 8333, connections)
+  Bitcoin::Connection.connect('elsdk', 8333, connections) end end
   # Bitcoin::Connection.connect('217.157.1.202', 8333, connections)
   # Bitcoin::Connection.connect_random_from_dns(connections) end end

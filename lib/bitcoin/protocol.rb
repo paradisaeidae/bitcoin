@@ -1,22 +1,9 @@
-require 'socket'
-require 'digest/sha2'
-require 'json'
 module Bitcoin
 module Protocol # bitcoin/src/main.h
 MAX_INV_SZ = 50000
 # BIP 0031, pong message, is enabled for all versions AFTER this one
 BIP0031_VERSION = 60000
-autoload :TxIn,              'bitcoin/protocol/txin'
-autoload :TxOut,             'bitcoin/protocol/txout'
-autoload :Tx,                'bitcoin/protocol/tx'
-autoload :Block,             'bitcoin/protocol/block'
-autoload :Addr,              'bitcoin/protocol/address'
-autoload :Reject,            'bitcoin/protocol/reject'
-autoload :Version,           'bitcoin/protocol/version'
-autoload :AuxPow,            'bitcoin/protocol/aux_pow'
-autoload :PartialMerkleTree, 'bitcoin/protocol/partial_merkle_tree'
-autoload :Handler,           'bitcoin/protocol/handler'
-autoload :Parser,            'bitcoin/protocol/parser'
+
 Uniq = rand(0xffffffffffffffff)
 # var_int refers to https://en.bitcoin.it/wiki/Protocol_specification#Variable_length_integer and is what
 # Craig calls "CompactSize"
